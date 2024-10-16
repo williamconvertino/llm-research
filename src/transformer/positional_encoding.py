@@ -1,6 +1,3 @@
-"""
-"""
-
 import torch
 import torch.nn as nn
 import math
@@ -9,15 +6,15 @@ class PositionalEncoding(nn.Module):
   def __init__(self, transformer_config):
     super().__init__()
     
-    d_model = transformer_config.d_model
-    context_size = transformer_config.context_size
+    self.d_model = transformer_config.d_model
+    self.context_size = transformer_config.context_size
     
-    positional_encoding = torch.zeros(context_size, d_model)
+    positional_encoding = torch.zeros(self.context_size, self.d_model)
     
-    position = torch.arange(0, context_size, dtype=torch.float)
+    position = torch.arange(0, self.context_size, dtype=torch.float)
     position = position.unsqueeze(1)
       
-    div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+    div_term = torch.exp(torch.arange(0, self.d_model, 2).float() * (-math.log(10000.0) / self.d_model))
       
     positional_encoding[:, 0::2] = torch.sin(position * div_term)
     positional_encoding[:, 1::2] = torch.cos(position * div_term)
