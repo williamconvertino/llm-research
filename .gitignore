@@ -16,17 +16,13 @@ pip-wheel-metadata/
 .ipynb_checkpoints/
 
 # Data files
-data/raw/
-data/processed/
-data/embeddings/
+data/
 
 # Model files and checkpoints
-models/base_model/
-models/fine_tuned/
+models/
 
 # Experiment tracking logs
-experiments/*/logs/
-experiments/*/checkpoints/
+experiments/
 
 # Generated outputs (images, plots, etc.)
 outputs/
