@@ -13,4 +13,3 @@ This repository contains code and resources for research on Large Language Model
 ## Authors
 
 - **William Convertino**
-- **Eric Bai**
