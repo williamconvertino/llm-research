@@ -7,6 +7,7 @@ class TransformerBlock(nn.Module):
     super().__init__()
 
     self.num_heads = block_config.num_heads
+    self.d_embedding = block_config.d_embedding
     self.use_attn = block_config.use_attn
     self.use_ff = block_config.use_ff
     self.d_attn = block_config.d_attn
@@ -20,20 +21,20 @@ class TransformerBlock(nn.Module):
       self.attn = MultiHeadAttention(block_config)
       
       if self.attn_layer_norm_mode != 'none':
-        self.attn_ln = nn.LayerNorm(self.d_attn)
+        self.attn_ln = nn.LayerNorm(self.d_embedding)
       
       if self.p_dropout_attn > 0:
         self.attn_dropout = nn.Dropout(self.p_dropout_attn)
         
     if self.use_ff:
       self.ff = nn.Sequential(
-        nn.Linear(self.d_attn, self.d_ff),
+        nn.Linear(self.d_embedding, self.d_ff),
         nn.ReLU(),
-        nn.Linear(self.d_ff, self.d_attn)
+        nn.Linear(self.d_ff, self.d_embedding)
       )
       
       if self.ff_layer_norm_mode != 'none':
-        self.ff_ln = nn.LayerNorm(self.d_attn)
+        self.ff_ln = nn.LayerNorm(self.d_embedding)
       
       if self.p_dropout_ff > 0:
         self.ff_dropout = nn.Dropout(self.p_dropout_ff)
