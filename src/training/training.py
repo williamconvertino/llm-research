@@ -82,7 +82,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2
         elapsed_time = time.time() - batch_start_time
         time_remaining = (elapsed_time / (i + 1)) * (len(train_dataloader) - (i + 1))
         time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
-        print(f"\rEpoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item()} {most_recent_val_string}| Batch Time Remaining: {time_remaining}", flush=True)
+        print(f"\rEpoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item()} {most_recent_val_string}| Batch Time Remaining: {time_remaining}", end='', flush=True)
     
     avg_epoch_loss = epoch_loss / len(train_dataloader)
     
