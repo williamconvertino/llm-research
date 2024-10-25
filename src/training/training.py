@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 import transformers
 from torch.nn.utils import clip_grad_norm_
@@ -34,6 +35,8 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5
   train_results = {}
   eval_results = {}
   
+  start_time = time.time()
+  
   for epoch in range(num_epochs):
     
     model.train()
@@ -47,6 +50,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5
     }
     
     epoch_loss = 0
+    batch_start_time = time.time()
     
     for i, batch in enumerate(train_dataloader):
       
@@ -71,7 +75,10 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5
       scheduler.step()
       
       if v:
-        print(f"Epoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item()}", end='\r')
+        elapsed_time = time.time() - batch_start_time
+        time_remaining = (elapsed_time / (i + 1)) * (len(train_dataloader) - (i + 1))
+        time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
+        print(f"Epoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item()} | Batch Time Remaining: {time_remaining}", end='\r')
     
     avg_epoch_loss = epoch_loss / len(train_dataloader)
     
@@ -79,7 +86,10 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5
     eval_results[epoch]['loss'] = evaluate_model_loss(model, val_dataloader)
     
     if v:
-      print(f"Epoch {epoch + 1} / {num_epochs} | Train Loss: {avg_epoch_loss} | Val Loss: {eval_results[epoch]['loss']}")
+      time_elapsed = time.time() - start_time
+      time_remaining = (time_elapsed / (epoch + 1)) * (num_epochs - (epoch + 1))
+      time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
+      print(f"Epoch {epoch + 1} / {num_epochs} | Train Loss: {avg_epoch_loss} | Val Loss: {eval_results[epoch]['loss']} | Time Remaining: {time_remaining}")
       
   if v:
     print("="*40)
