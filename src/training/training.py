@@ -4,6 +4,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 from torch.amp import GradScaler, autocast
 from src.evaluation import evaluate_model_loss
+from src.visualization import plot_results
 
 model_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../models')
 results_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../outputs/results')
@@ -93,10 +94,12 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2
       time_remaining = (time_elapsed / (epoch + 1)) * (num_epochs - (epoch + 1))
       time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
       print(f"Epoch {epoch + 1} / {num_epochs} | Train Loss: {avg_epoch_loss:.4f} | Val Loss: {val_results[epoch]['loss']:.4f} | Time Remaining: {time_remaining}")
-      
+    
     torch.save(model.state_dict(), os.path.join(model_base_dir, f"{model.name}_epoch_{epoch}.pt"))
     torch.save(train_results, train_results_path)
     torch.save(val_results, val_results_path)
+    
+    plot_results(train_results, val_results, model)
     
   if v:
     print("="*40)
