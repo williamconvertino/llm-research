@@ -40,7 +40,7 @@ class GPTConfig():
         context_size: int = 512,
         vocab_size: int = 10000,
         d_embedding: int = 512,
-        tie_output_weights: bool = False,
+        tie_output_weights: bool = True,
         use_embedding_layer_norm: bool = False,
         p_dropout_embedding: float = 0.1,
         blocks: list = [BlockConfig()], # Accepts either a list of BlockConfig objects or a list of dictionaries with the desired fields
