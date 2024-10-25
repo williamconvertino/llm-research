@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 
 base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../outputs/figures')
 
-def plot_losses(*args, title='Losses', save_name=None, xlabel='Steps', ylabel='Loss', mark_epochs=True, epoch_steps=100):
+def plot_losses(*args, title='Losses', save_name=None, xlabel='Steps', ylabel='Loss', mark_epochs=False, epoch_steps=None):
   
   plt.figure(figsize=(12, 8))
-  plt.title = title
+  plt.title(title)
   
   max_step = 0
   
@@ -15,7 +15,7 @@ def plot_losses(*args, title='Losses', save_name=None, xlabel='Steps', ylabel='L
     plt.plot(x, y, label=label, color=color)
     max_step = max(max_step, max(x))
   
-  if mark_epochs:
+  if mark_epochs and epoch_steps is not None and epoch_steps > 0:
     for x in range(epoch_steps, max_step, epoch_steps):
       plt.axvline(x=x, color='red', linestyle='--', label='Epoch Boundary' if x == epoch_steps else None)
       

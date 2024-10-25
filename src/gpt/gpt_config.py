@@ -31,9 +31,8 @@ class BlockConfig():
   def from_dict(block_dict):
     block = BlockConfig()
     for key, value in block.__dict__.items():
-      assert key in block_dict, f"Key {key} not found in block_dict"
       if key in block_dict:
-        setattr(block, key, block_dict[key])
+        block.__dict__[key] = block_dict[key]
     return block
   
 class GPTConfig():

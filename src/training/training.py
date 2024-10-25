@@ -13,6 +13,7 @@ weight_decay = 0.01
 max_grad_norm = 1.0
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cpu')
 
 def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=25000, v=True):
     
