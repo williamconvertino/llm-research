@@ -2,7 +2,7 @@ import os
 import torch
 import transformers
 from torch.nn.utils import clip_grad_norm_
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler, autocast
 from src.evaluation import evaluate_model_loss
 
 model_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../models')
@@ -12,8 +12,8 @@ weight_decay = 0.01
 max_grad_norm = 1.0
 p_warmup_steps = 0.1
 
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cpu')
 
 def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5, v=True):
     
@@ -21,7 +21,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5
   optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
   scheduler = transformers.get_linear_schedule_with_warmup(optimizer, num_warmup_steps, len(train_dataloader))
   
-  scaler = GradScaler()
+  scaler = GradScaler(device)
   
   if v:
     print("="*40)
@@ -52,7 +52,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5
       
       optimizer.zero_grad()
       
-      with autocast():
+      with autocast(device):
         sequences = batch['input_ids'].to(device)
         inputs = sequences[:, :-1]
         targets = sequences[:, 1:].contiguous()
