@@ -16,7 +16,7 @@ p_warmup_steps = 0.1
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # device = torch.device('cpu')
 
-def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2500, v=True):
+def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=25000, v=True):
     
   num_warmup_steps = p_warmup_steps * len(train_dataloader)
   optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -52,8 +52,10 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2
     epoch_loss = 0
     batch_start_time = time.time()
     
+    most_recent_val_string = ""
+    
     for i, batch in enumerate(train_dataloader):
-      
+              
       optimizer.zero_grad()
       
       with autocast(device.type):
@@ -68,7 +70,8 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2
         if (i + 1) % record_steps == 0 or (i == 0 and epoch == 0):
           train_results[epoch]['batch_losses'].append((i, loss.item()))
           eval_results[epoch]['batch_losses'].append((i, evaluate_model_loss(model, val_dataloader)))
-          
+          most_recent_val_string = f"| Most Recent Val Loss: {eval_results[epoch]['batch_losses'][-1][1]} "
+
       scaler.scale(loss).backward()
       clip_grad_norm_(model.parameters(), max_grad_norm)
       scaler.step(optimizer)
@@ -79,7 +82,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2
         elapsed_time = time.time() - batch_start_time
         time_remaining = (elapsed_time / (i + 1)) * (len(train_dataloader) - (i + 1))
         time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
-        print(f"Epoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item()} | Batch Time Remaining: {time_remaining}", end='\r', flush=True)
+        print(f"Epoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item()} {most_recent_val_string}| Batch Time Remaining: {time_remaining}", flush=True)
     
     avg_epoch_loss = epoch_loss / len(train_dataloader)
     
