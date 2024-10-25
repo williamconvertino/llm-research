@@ -1,7 +1,6 @@
 import os
 import time
 import torch
-import transformers
 from torch.nn.utils import clip_grad_norm_
 from torch.amp import GradScaler, autocast
 from src.evaluation import evaluate_model_loss
@@ -9,20 +8,15 @@ from src.evaluation import evaluate_model_loss
 model_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../models')
 results_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../outputs/results')
 
-learning_rate = 0.0001
+learning_rate = 1e-5
 weight_decay = 0.01
 max_grad_norm = 1.0
-p_warmup_steps = 0.1
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=25000, v=True):
     
-  num_warmup_steps = p_warmup_steps * len(train_dataloader)
-  optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
-  scheduler = transformers.get_linear_schedule_with_warmup(optimizer, num_warmup_steps, len(train_dataloader))
-  
-  scaler = GradScaler(device)
+  optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
   
   if v:
     print("="*40)
@@ -42,8 +36,6 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2
     os.makedirs(model_base_dir, exist_ok=True)
   if not os.path.exists(results_base_dir):
     os.makedirs(results_base_dir, exist_ok=True)
-  if os.path.exists(train_results_path):
-    train_results = torch.load(train_results_path)
   
   start_time = time.time()
   
@@ -68,26 +60,22 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2
               
       optimizer.zero_grad()
       
-      with autocast(device.type):
-        sequences = batch['input_ids'].to(device)
-        inputs = sequences[:, :-1]
-        targets = sequences[:, 1:].contiguous()
-        
-        _, loss = model(inputs, targets)
-        
-        epoch_loss += loss.item()
-        
-        if (i + 1) % record_steps == 0 or (i == 0 and epoch == 0):
-          train_results[epoch]['batch_losses'].append((i, loss.item()))
-          val_results[epoch]['batch_losses'].append((i, evaluate_model_loss(model, val_dataloader)))
-          most_recent_val_string = f"{val_results[epoch]['batch_losses'][-1][1]:.4f}"
-
-      scaler.scale(loss).backward()
-      clip_grad_norm_(model.parameters(), max_grad_norm)
-      scaler.step(optimizer)
-      scaler.update()
-      scheduler.step()
+      sequences = batch['input_ids'].to(device)
+      inputs = sequences[:, :-1]
+      targets = sequences[:, 1:].contiguous()
       
+      _, loss = model(inputs, targets)
+      
+      epoch_loss += loss.item()
+      loss.backward()
+      clip_grad_norm_(model.parameters(), max_grad_norm)
+      optimizer.step()
+      
+      if (i + 1) % record_steps == 0 or (i == 0 and epoch == 0):
+        train_results[epoch]['batch_losses'].append((i, loss.item()))
+        val_results[epoch]['batch_losses'].append((i, evaluate_model_loss(model, val_dataloader)))
+        most_recent_val_string = f"{val_results[epoch]['batch_losses'][-1][1]:.4f}"
+
       if v:
         elapsed_time = time.time() - batch_start_time
         time_remaining = (elapsed_time / (i + 1)) * (len(train_dataloader) - (i + 1))
