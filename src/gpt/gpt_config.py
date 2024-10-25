@@ -1,3 +1,5 @@
+from typing import Optional
+
 class BlockConfig():
   def __init__(
     self,
@@ -5,8 +7,8 @@ class BlockConfig():
     num_heads: int = 8,
     use_attn: bool = True,
     use_ff: bool = True,
-    d_attn: int | None = None, # If None, d_attn will be set to d_embedding // num_heads
-    d_ff: int | None = None, # If None, d_ff will be set to d_embedding
+    d_attn: Optional[int] = None, # If None, d_attn will be set to d_embedding // num_heads
+    d_ff: Optional[int] = None, # If None, d_ff will be set to d_embedding
     attn_layer_norm_mode: str = 'pre_skip',
     ff_layer_norm_mode: str = 'pre_skip',
     p_dropout_attn: float = 0.1,
@@ -44,7 +46,7 @@ class GPTConfig():
         use_embedding_layer_norm: bool = False,
         p_dropout_embedding: float = 0.1,
         blocks: list = [BlockConfig()], # Accepts either a list of BlockConfig objects or a list of dictionaries with the desired fields
-        d_ff: int | None = None # An optional parameter that can be used to set the d_ff value for all blocks
+        d_ff: Optional[int] = None # An optional parameter that can be used to set the d_ff value for all blocks
     ):
         self.context_size = context_size
         self.vocab_size = vocab_size
