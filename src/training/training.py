@@ -29,8 +29,13 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2
     print(f"Training model {model.name} [Using device: {device}]")
     print("="*40)
   
+  
+  print("Moving model to device", flush=True)
+  
   model.to(device)
   model.device = device
+  
+  print("Model moved to device", flush=True)
   
   train_results = {}
   eval_results = {}
@@ -55,35 +60,37 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2
     for i, batch in enumerate(train_dataloader):
       
       optimizer.zero_grad()
-      
+      print("About to autocast", flush=True)
       with autocast(device.type):
         sequences = batch['input_ids'].to(device)
         inputs = sequences[:, :-1]
         targets = sequences[:, 1:].contiguous()
-          
+        
+        print("About to run forward pass", flush=True)
         _, loss = model(inputs, targets)
+        print("Forward pass complete", flush=True)
         
         epoch_loss += loss.item()
-        print("Train step")
+        print("Train step", flush=True)
         if (i + 1) % record_steps == 0 or (i == 0 and epoch == 0):
           train_results[epoch]['batch_losses'].append((i, loss.item()))
-          print("About to val")
+          print("About to val", flush=True)
           eval_results[epoch]['batch_losses'].append((i, evaluate_model_loss(model, val_dataloader)))
-          print("Validated")
+          print("Validated", flush=True)
         
-      print("Backward")
+      print("Backward", flush=True)
       scaler.scale(loss).backward()
       clip_grad_norm_(model.parameters(), max_grad_norm)
       scaler.step(optimizer)
       scaler.update()
       scheduler.step()
-      print("Backward complete")
+      print("Backward complete", flush=True)
       
       if v:
         elapsed_time = time.time() - batch_start_time
         time_remaining = (elapsed_time / (i + 1)) * (len(train_dataloader) - (i + 1))
         time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
-        print(f"Epoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item()} | Batch Time Remaining: {time_remaining}", end='\r')
+        # print(f"Epoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item()} | Batch Time Remaining: {time_remaining}", end='\r')
     
     avg_epoch_loss = epoch_loss / len(train_dataloader)
     
