@@ -16,7 +16,7 @@ p_warmup_steps = 0.1
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # device = torch.device('cpu')
 
-def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5, v=True):
+def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=2500, v=True):
     
   num_warmup_steps = p_warmup_steps * len(train_dataloader)
   optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -64,15 +64,20 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5
         _, loss = model(inputs, targets)
         
         epoch_loss += loss.item()
+        print("Train step")
         if (i + 1) % record_steps == 0 or (i == 0 and epoch == 0):
           train_results[epoch]['batch_losses'].append((i, loss.item()))
+          print("About to val")
           eval_results[epoch]['batch_losses'].append((i, evaluate_model_loss(model, val_dataloader)))
+          print("Validated")
         
+      print("Backward")
       scaler.scale(loss).backward()
       clip_grad_norm_(model.parameters(), max_grad_norm)
       scaler.step(optimizer)
       scaler.update()
       scheduler.step()
+      print("Backward complete")
       
       if v:
         elapsed_time = time.time() - batch_start_time
