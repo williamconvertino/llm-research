@@ -52,7 +52,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=5
       
       optimizer.zero_grad()
       
-      with autocast(device):
+      with autocast(device.type):
         sequences = batch['input_ids'].to(device)
         inputs = sequences[:, :-1]
         targets = sequences[:, 1:].contiguous()
