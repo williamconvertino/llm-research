@@ -15,10 +15,13 @@ max_grad_norm = 1.0
 
 DEFAULT_DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=None, v=True, device=DEFAULT_DEVICE):
+def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=None, v=True, device=DEFAULT_DEVICE, simulation_name=None):
     
   if record_steps is None:
     record_steps = len(train_dataloader) // 20
+    
+  if simulation_name is None:
+    simulation_name = model.name
     
   device = torch.device(device)
 
@@ -99,7 +102,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=N
       time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
       print(f"Epoch {epoch + 1} / {num_epochs} | Train Loss: {avg_epoch_loss:.4f} | Val Loss: {val_results[epoch]['loss']:.4f} | Time Remaining: {time_remaining}")
     
-    torch.save(model.state_dict(), os.path.join(model_base_dir, f"{model.name}_epoch_{epoch}.pt"))
+    torch.save(model.state_dict(), os.path.join(model_base_dir, f"{simulation_name}_epoch_{epoch}.pt"))
     torch.save(train_results, train_results_path)
     torch.save(val_results, val_results_path)
     
