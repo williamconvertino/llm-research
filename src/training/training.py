@@ -38,8 +38,8 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=N
   train_results = {}
   val_results = {}
   
-  train_results_path = os.path.join(results_base_dir, f"{model.name}_train_results.json")
-  val_results_path = os.path.join(results_base_dir, f"{model.name}_eval_results.json")
+  train_results_path = os.path.join(results_base_dir, f"{simulation_name}_train_results.json")
+  val_results_path = os.path.join(results_base_dir, f"{simulation_name}_eval_results.json")
   
   if not os.path.exists(model_base_dir):
     os.makedirs(model_base_dir, exist_ok=True)
