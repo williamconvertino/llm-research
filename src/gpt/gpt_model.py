@@ -17,7 +17,7 @@ class GPTModel(nn.Module):
     self.p_dropout_embedding = gpt_config.p_dropout_embedding
     
     # Model Components
-    self.embedding = nn.Embedding(self.vocab_size + 1, self.d_embedding) # We add 1 because our padding token has idx = vocab_size
+    self.embedding = nn.Embedding(self.vocab_size, self.d_embedding)
     self.positional_encoding = PositionalEncoding(self.context_size, self.d_embedding)
     
     if self.use_embedding_layer_norm:
@@ -34,13 +34,13 @@ class GPTModel(nn.Module):
     
     self.blocks = nn.ModuleList(blocks)
     
-    self.output_linear = nn.Linear(self.d_embedding, self.vocab_size + 1)
+    self.output_linear = nn.Linear(self.d_embedding, self.vocab_size)
     
     if self.tie_output_weights:
       self.output_linear.weight = self.embedding.weight
     
     self.num_params = sum(p.numel() for block in self.blocks for p in block.parameters()) # Exclude the embedding and output_linear parameters in parameter count
-    self.num_params_formatted = f"{self.num_params // 1000000}M"
+    self.num_params_formatted = f"{round(self.num_params / 1000000, 2)}M"
     
     if name is None:
       self.name = "GPTModel"
@@ -48,11 +48,21 @@ class GPTModel(nn.Module):
       self.name = name
       
     self.name += f"_{self.num_params_formatted}"
+    
+    self._init_weights()
         
-  def forward(self, x, targets=None):
+  def _init_weights(self):
+    std = 1.0 / (self.d_embedding ** 0.5)
+    nn.init.normal_(self.embedding.weight, std=std)
+    if not self.tie_output_weights:
+      nn.init.normal_(self.output_linear.weight, std=std)
+      nn.init.constant_(self.output_linear.bias, 0)
+          
+  def forward(self, x, targets=None, padding_token=-1):
     
     p = self.positional_encoding(x)
     e = self.embedding(x)
+    
     x = e + p
     
     if self.use_embedding_layer_norm:
@@ -70,6 +80,6 @@ class GPTModel(nn.Module):
       loss = None
     else:
       logits = self.output_linear(x)
-      loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=self.vocab_size) # We ignore the padding token in the loss calculation
+      loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=padding_token)
     
     return logits, loss

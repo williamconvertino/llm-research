@@ -39,7 +39,7 @@ class GPTConfig():
     def __init__(
         self,
         context_size: int = 512,
-        vocab_size: int = 10000,
+        vocab_size: int = None,
         d_embedding: int = 512,
         tie_output_weights: bool = True,
         use_embedding_layer_norm: bool = False,

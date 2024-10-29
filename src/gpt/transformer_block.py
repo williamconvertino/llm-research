@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from .multi_head_attention import MultiHeadAttention
+from .feed_forward import FeedForward
 
 class TransformerBlock(nn.Module):
   def __init__(self, block_config):
@@ -27,11 +28,7 @@ class TransformerBlock(nn.Module):
         self.attn_dropout = nn.Dropout(self.p_dropout_attn)
         
     if self.use_ff:
-      self.ff = nn.Sequential(
-        nn.Linear(self.d_embedding, self.d_ff),
-        nn.ReLU(),
-        nn.Linear(self.d_ff, self.d_embedding)
-      )
+      self.ff = FeedForward(block_config)
       
       if self.ff_layer_norm_mode != 'none':
         self.ff_ln = nn.LayerNorm(self.d_embedding)

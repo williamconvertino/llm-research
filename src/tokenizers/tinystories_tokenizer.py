@@ -17,14 +17,14 @@ def load_tinystories_tokenizer(vocab_size=10000):
     print(f"Training tokenizer {tokenizer_name} with vocab_size={vocab_size}")
     tokenizer = ByteLevelBPETokenizer() # Note that we only use the ByteLevelBPETokenizer for training (the final tokenizer will be a GPT2TokenizerFast)
     dataset = load_tinystories_dataset_raw()
-    tokenizer.train_from_iterator(dataset['train']['text'], vocab_size=vocab_size-1, min_frequency=5) # We set vocab_size-1 because we will later add a padding token
+    tokenizer.train_from_iterator(dataset['train']['text'], vocab_size=vocab_size, min_frequency=5)
     del dataset
     
     os.makedirs(tokenizer_dir, exist_ok=True)
     tokenizer.save_model(tokenizer_dir)
   
   tokenizer = GPT2TokenizerFast(vocab_file=vocab_dir, merges_file=merges_dir)
-  tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+  tokenizer.add_special_tokens({'pad_token': '[PAD]', 'eos_token': '[EOT]'})
   tokenizer.name = tokenizer_name
   
   return tokenizer

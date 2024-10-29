@@ -13,11 +13,15 @@ learning_rate = 1e-5
 weight_decay = 0.01
 max_grad_norm = 1.0
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# device = torch.device('cpu')
+DEFAULT_DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=25000, v=True):
+def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=None, v=True, device=DEFAULT_DEVICE):
     
+  if record_steps is None:
+    record_steps = len(train_dataloader) // 20
+    
+  device = torch.device(device)
+
   optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
   
   if v:
