@@ -76,14 +76,14 @@ def load_tinystories_dataloaders(tokenizer, context_size=512, batch_size=32, tra
   else:
     dataset = load_tinystories_dataset_padded(tokenizer, context_size)
   
-  assert len(dataset['train']) >= train_size + val_size, f"train_size + val_size ({train_size + val_size}) is greater than the number of training samples ({len(dataset['train'])})"
-  assert len(dataset['test']) >= test_size, f"test_size ({test_size}) is greater than the number of test samples ({len(dataset['test'])})"
-  
   if train_size is None:
     train_size = len(dataset['train']) - val_size
     
   if test_size is None:
     test_size = len(dataset['test'])
+  
+  assert len(dataset['train']) >= train_size + val_size, f"train_size + val_size ({train_size + val_size}) is greater than the number of training samples ({len(dataset['train'])})"
+  assert len(dataset['test']) >= test_size, f"test_size ({test_size}) is greater than the number of test samples ({len(dataset['test'])})"
   
   dataset = datasets.DatasetDict({
     'train': dataset['train'].select(range(train_size)),
