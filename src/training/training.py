@@ -15,7 +15,7 @@ max_grad_norm = 1.0
 
 DEFAULT_DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=None, v=True, device=DEFAULT_DEVICE, simulation_name=None):
+def train(model, tokenizer, train_dataloader, val_dataloader, num_epochs=10, record_steps=None, v=True, device=DEFAULT_DEVICE, simulation_name=None):
     
   if record_steps is None:
     record_steps = len(train_dataloader) // 20
@@ -69,11 +69,17 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=N
               
       optimizer.zero_grad()
       
-      sequences = batch['input_ids'].to(device)
-      inputs = sequences[:, :-1]
-      targets = sequences[:, 1:].contiguous()
+      input_ids = batch['input_ids'].to(model.device)
       
-      _, loss = model(inputs, targets)
+      attention_mask = batch.get('attention_mask', None)
+      if attention_mask is not None:
+        attention_mask = attention_mask.to(model.device)
+      
+      targets = torch.zeros_like(input_ids).to(model.device)
+      targets[:, :-1] = input_ids[:, 1:]
+      targets[:, -1] = tokenizer.pad_token_id
+      
+      _, loss = model(input_ids, targets, attention_mask=attention_mask, padding_token=tokenizer.pad_token_id)
       
       epoch_loss += loss.item()
       loss.backward()
@@ -82,7 +88,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=N
       
       if (i + 1) % record_steps == 0 or (i == 0 and epoch == 0):
         train_results[epoch]['batch_losses'].append((i, loss.item()))
-        val_results[epoch]['batch_losses'].append((i, evaluate_model_loss(model, val_dataloader)))
+        val_results[epoch]['batch_losses'].append((i, evaluate_model_loss(model, tokenizer, val_dataloader)))
         most_recent_val_string = f"{val_results[epoch]['batch_losses'][-1][1]:.4f}"
 
       if v:
@@ -94,7 +100,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=N
     avg_epoch_loss = epoch_loss / len(train_dataloader)
     
     train_results[epoch]['loss'] = avg_epoch_loss
-    val_results[epoch]['loss'] = evaluate_model_loss(model, val_dataloader)
+    val_results[epoch]['loss'] = evaluate_model_loss(model, tokenizer, val_dataloader)
     
     if v:
       time_elapsed = time.time() - start_time
@@ -106,7 +112,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=N
     torch.save(train_results, train_results_path)
     torch.save(val_results, val_results_path)
     
-    plot_results(train_results, val_results, model)
+    plot_results(train_results, val_results, model, simulation_name)
     
   if v:
     print("="*40)
