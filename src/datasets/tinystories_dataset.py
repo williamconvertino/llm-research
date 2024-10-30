@@ -15,6 +15,9 @@ def load_tinystories_dataset_raw():
   dataset = datasets.load_dataset(huggingface_path, cache_dir=dataset_path)
   dataset['test'] = dataset.pop('validation')
   
+  # dataset['train'] = dataset.pop('train').select(range(400))
+  # dataset['test'] = dataset.pop('test').select(range(200))
+  
   return dataset
 
 def load_tinystories_dataset_tokenized(tokenizer):
