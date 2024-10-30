@@ -29,7 +29,7 @@ class MultiHeadAttention(nn.Module):
     nn.init.xavier_uniform_(self.W_qkv.weight)
     nn.init.xavier_uniform_(self.W_o.weight)
   
-  def forward(self, x):
+  def forward(self, x, attention_mask=None):
     batch_size, seq_len, _ = x.size()
     
     QKV = self.W_qkv(x)
@@ -39,7 +39,18 @@ class MultiHeadAttention(nn.Module):
     K = K.view(batch_size, seq_len, self.num_heads, self.d_attn).transpose(1, 2)
     V = V.view(batch_size, seq_len, self.num_heads, self.d_attn).transpose(1, 2)
     
-    attn_output = scaled_dot_product_attention(Q, K, V, is_causal=True, dropout_p=self.p_dropout_attn if self.training else 0.0)
+    causal_mask = torch.tril(torch.ones(seq_len, seq_len, dtype=torch.long, device=x.device), diagonal=0)
+    causal_mask = causal_mask.view(1, 1, seq_len, seq_len).expand(batch_size, self.num_heads, seq_len, seq_len)
+    
+    if attention_mask is None:
+      attention_mask = causal_mask
+    else:
+      attention_mask = attention_mask.unsqueeze(1).unsqueeze(1).expand(batch_size, self.num_heads, seq_len, seq_len)
+      attention_mask = attention_mask & causal_mask
+    
+    attention_mask = attention_mask == 0
+    
+    attn_output = scaled_dot_product_attention(Q, K, V, attn_mask=attention_mask, dropout_p=self.p_dropout_attn if self.training else 0.0)
     attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_len, self.num_heads * self.d_attn)
     attn_output = self.W_o(attn_output)
     

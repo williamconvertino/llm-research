@@ -36,10 +36,10 @@ class TransformerBlock(nn.Module):
       if self.p_dropout_ff > 0:
         self.ff_dropout = nn.Dropout(self.p_dropout_ff)
         
-  def forward(self, x):
+  def forward(self, x, attention_mask=None):
     
     if self.use_attn:
-      attn_output = self.attn(x)
+      attn_output = self.attn(x, attention_mask)
       
       if self.p_dropout_attn > 0:
         attn_output = self.attn_dropout(attn_output)
