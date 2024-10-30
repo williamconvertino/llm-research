@@ -46,7 +46,7 @@ def load_tinystories_dataset_padded(tokenizer, context_size=512):
     dataset['train'] = dataset['train'].map(lambda x: apply_padding(x, tokenizer, context_size, sw=True), batched=True, remove_columns=['text'])
     dataset['test'] = dataset['test'].map(lambda x: apply_padding(x, tokenizer, context_size), batched=True, remove_columns=['text'])
     dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
-    # dataset.save_to_disk(dataset_path)
+    dataset.save_to_disk(dataset_path)
     
   dataset.name = dataset_name
   return dataset
