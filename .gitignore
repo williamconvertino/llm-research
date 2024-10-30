@@ -17,6 +17,7 @@ pip-wheel-metadata/
 
 # Data files
 data/
+!data/datasets/preprocessed/
 
 # Model files and checkpoints
 models/
