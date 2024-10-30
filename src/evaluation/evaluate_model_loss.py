@@ -9,10 +9,9 @@ def evaluate_model_loss(model, tokenizer, dataloader):
     
     input_ids = batch['input_ids'].to(model.device)
     
-    if batch['attention_mask'] is not None:
-      attention_mask = batch['attention_mask'].to(model.device)
-    else:
-      attention_mask = None
+    attention_mask = batch.get('attention_mask', None)
+    if attention_mask is not None:
+      attention_mask = attention_mask.to(model.device)
       
     targets = torch.zeros_like(input_ids).to(model.device)
     targets[:, :-1] = input_ids[:, 1:]
