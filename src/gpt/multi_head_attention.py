@@ -39,7 +39,9 @@ class MultiHeadAttention(nn.Module):
     K = K.view(batch_size, seq_len, self.num_heads, self.d_attn).transpose(1, 2)
     V = V.view(batch_size, seq_len, self.num_heads, self.d_attn).transpose(1, 2)
     
-    attn_output = scaled_dot_product_attention(Q, K, V, is_causal=True, dropout_p=self.p_dropout_attn if self.training else 0.0)
+    with torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=False):
+      attn_output = scaled_dot_product_attention(Q, K, V, is_causal=True, dropout_p=self.p_dropout_attn if self.training else 0.0)
+      
     attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_len, self.num_heads * self.d_attn)
     attn_output = self.W_o(attn_output)
     
