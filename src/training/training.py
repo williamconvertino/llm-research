@@ -12,15 +12,15 @@ learning_rate = 1e-5
 weight_decay = 0.01
 max_grad_norm = 0.6
 
-def step(model, batch):
+def step(model, tokenizer, batch):
   input_ids = batch['input_ids'].to(model.device)
   targets = torch.zeros_like(input_ids).to(model.device)
   targets[:, :-1] = input_ids[:, 1:]
-  targets[:, -1] = -1
-  _, loss = model(input_ids, targets)
+  targets[:, -1] = tokenizer.pad_token_id
+  _, loss = model(input_ids, targets, padding_token=tokenizer.pad_token_id)
   return loss
 
-def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=None, v=True, device=None, simulation_name=None):
+def train(model, tokenizer, train_dataloader, val_dataloader, num_epochs=10, record_steps=None, v=True, device=None, simulation_name=None):
   
   # Device 
   if device is None:
@@ -79,7 +79,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=N
               
       optimizer.zero_grad()
       
-      loss = step(model, batch)
+      loss = step(model, tokenizer, batch)
       
       epoch_loss += loss.item()
       loss.backward()
@@ -90,7 +90,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=N
         
         val_loss = 0
         for v_batch in val_dataloader:
-          val_loss += step(model, v_batch).item()
+          val_loss += step(model, tokenizer, v_batch).item()
         val_loss /= len(val_dataloader)
           
         train_results[epoch]['batch_losses'].append((i, loss.item()))

@@ -30,22 +30,30 @@ class CausalSelfAttention(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        assert config.n_embd % config.n_head == 0
+        n_head = sum([head['num_heads'] for head in config.head_layout])
+        self.head_layout = config.head_layout
+        assert config.n_embd % n_head == 0
         # key, query, value projections for all heads, but in a batch
-        self.input_vectors = config.input_vectors
         
-        if self.input_vectors == ('w', 'w', 'w'):
-            self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd, bias=config.bias)
-        else:
-            self.w_k = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
-            self.w_q = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
-            self.w_v = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
+        w_q_list = []
+        w_k_list = []
+        w_v_list = []
+        
+        for head in self.head_layout:
+            w_q_list.append(nn.Linear(config.n_embd, config.n_embd, bias=config.bias))
+        
+        # if self.input_vectors == ('w', 'w', 'w'):
+        #     self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd, bias=config.bias)
+        # else:
+        #     self.w_k = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
+        #     self.w_q = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
+        #     self.w_v = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
         # output projection
         self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
         # regularization
         self.attn_dropout = nn.Dropout(config.dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
-        self.n_head = config.n_head
+        self.n_head = n_head
         self.n_embd = config.n_embd
         self.dropout = config.dropout
         
@@ -63,22 +71,50 @@ class CausalSelfAttention(nn.Module):
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
         # q, k, v  = self.c_attn(x).split(self.n_embd, dim=2)
         
-        if self.input_vectors == ('w', 'w', 'w'):
-            q, k, v  = self.c_attn(x).split(self.n_embd, dim=2)
-        else:
-            vector_map = {'w': x, 'x': x, 'e': e, 'p': p}
-            
-            q = vector_map[self.input_vectors[0]]
-            k = vector_map[self.input_vectors[1]]
-            v = vector_map[self.input_vectors[2]]
-            
-            q = self.w_q(q)
-            k = self.w_k(k)
-            v = self.w_v(v)
-            
-        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        q_list, k_list, v_list = [], [], []
+        
+        for head in self.head_layout:
+            num_heads = head['num_heads']
+            input_vectors = head['input_vectors']
+            for _ in num_heads:
+                if input_vectors == ('w', 'w', 'w'):
+                    q, k, v  = self.c_attn(x).split(self.n_embd, dim=2)
+                else:
+                    vector_map = {'w': x, 'x': x, 'e': e, 'p': p}
+                    q = vector_map[input_vectors[0]]
+                    k = vector_map[input_vectors[1]]
+                    v = vector_map[input_vectors[2]]
+                    q = self.w_q(q)
+                    k = self.w_k(k)
+                    v = self.w_v(v)
+                q_list.append(q)
+                k_list.append(k)
+                v_list.append(v)
+        
+        q = torch.cat(q_list, dim=0)
+        k = torch.cat(k_list, dim=0)
+        v = torch.cat(v_list, dim=0)
+        
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        
+        # if self.input_vectors == ('w', 'w', 'w'):
+        #     q, k, v  = self.c_attn(x).split(self.n_embd, dim=2)
+        # else:
+        #     vector_map = {'w': x, 'x': x, 'e': e, 'p': p}
+            
+        #     q = vector_map[self.input_vectors[0]]
+        #     k = vector_map[self.input_vectors[1]]
+        #     v = vector_map[self.input_vectors[2]]
+            
+        #     q = self.w_q(q)
+        #     k = self.w_k(k)
+        #     v = self.w_v(v)
+            
+        # k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        # q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        # v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
 
         # causal self-attention; Self-attend: (B, nh, T, hs) x (B, nh, hs, T) -> (B, nh, T, T)
         if self.flash:
@@ -147,18 +183,29 @@ class Block(nn.Module):
         
         return x
 
-@dataclass
-class GPTConfig:
-    block_size: int = 1024
-    vocab_size: int = 50304 # GPT-2 vocab_size of 50257, padded up to nearest multiple of 64 for efficiency
-    n_layer: int = 12
-    n_embd: int = 768
-    dropout: float = 0.0
-    bias: bool = True # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster
-    use_ff: bool = True
-    ln_setting: str = 'post' # 'pre' skip or 'post' 'skip' layer norm (or None)
-    head_layout: list = [(12, 'w', 'w', 'w')]
-
+class GPTConfig():
+    def __init__(
+        self,
+        block_size: int = 1024,
+        vocab_size: int = 50304, # GPT-2 vocab_size of 50257, padded up to nearest multiple of 64 for efficiency
+        n_layer: int = 12,
+        n_embd: int = 768,
+        dropout: float = 0.0,
+        bias: bool = True, # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster
+        use_ff: bool = True,
+        ln_setting: str = 'post', # 'pre' skip or 'post' 'skip' layer norm (or None)
+        head_layout: list = [{'num_heads': 12, 'input_vectors': ('w', 'w', 'w')}]
+    ):
+        self.block_size = block_size
+        self.vocab_size = vocab_size
+        self.n_layer = n_layer
+        self.n_embd = n_embd
+        self.dropout = dropout
+        self.bias = bias
+        self.use_ff = use_ff
+        self.ln_setting = ln_setting
+        self.head_layout = head_layout
+        
 class GPT(nn.Module):
 
     def __init__(self, config):
