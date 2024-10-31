@@ -1,101 +1,73 @@
 import os
+import time
 import datasets
+from datasets import Dataset, DatasetDict
 from torch.utils.data import DataLoader
-from src.preprocessing import apply_sliding_window, apply_padding
 
 HF_PATH = 'roneneldan/TinyStories'
 DATASET_NAME = 'tinystories'
-BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data/datasets')
+BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../data/datasets/', DATASET_NAME)
+RAW_DIR = f'{BASE_DIR}/raw'
 
+VAL_SIZE = 20000
 
-def load_tinystories_dataset_raw():
-  dataset_path = os.path.join(BASE_DIR, 'raw', DATASET_NAME)
-  if not os.path.exists(dataset_path):
-      os.makedirs(dataset_path)
-  dataset = datasets.load_dataset(HF_PATH, cache_dir=dataset_path)
-  dataset['test'] = dataset.pop('validation')
-  
-  dataset['train'] = dataset.pop('train').select(range(400))
-  dataset['test'] = dataset.pop('test').select(range(200))
-  
-  return dataset
+def load_tinystories_dataset():
+  return datasets.load_dataset(HF_PATH, cache_dir=RAW_DIR)
 
-# def load_tinystories_dataset_tokenized(tokenizer):
+def load_tinystories_dataset_preprocessed(tokenizer, context_size):
   
-#   dataset_name = f'{DATASET_NAME}_tokenized_(tokenizer={tokenizer.name})'
-#   dataset_path = os.path.join(BASE_DIR, 'tokenized', dataset_name)
+  dataset_name = f'{DATASET_NAME}_preprocessed_(cs={context_size})'
+  dataset_path = f'{BASE_DIR}/preprocessed/{dataset_name}'
   
-#   if os.path.exists(dataset_path):
-#     dataset = datasets.load_from_disk(dataset_path)
-#   else:
-#     dataset = load_tinystories_dataset_raw()
-#     dataset = dataset.map(lambda x: tokenizer(x['text'], return_attention_mask=False), batched=True)
-#     print(f"Saving tokenized dataset to {dataset_path}")
-#     dataset.save_to_disk(dataset_path)
-    
-#   dataset.name = dataset_name
-#   return dataset
-
-def load_tinystories_dataset_padded(tokenizer, context_size=512):
-  
-  dataset_name = f'{DATASET_NAME}_padded_(tokenizer={tokenizer.name})_(cs={context_size})'
-  dataset_path = os.path.join(BASE_DIR, 'padded', dataset_name)
-
   if os.path.exists(dataset_path):
-    dataset = datasets.load_from_disk(dataset_path)
-  else:
-    dataset = load_tinystories_dataset_raw()
-    dataset = dataset.map(lambda x: apply_padding(x, tokenizer, context_size), batched=True, remove_columns=['text'])
-    dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
-    dataset.save_to_disk(dataset_path)
-    
-  dataset.name = dataset_name
-  return dataset
-
-# def load_tinystories_dataset_sliding_window(tokenizer, context_size=512):
+    print(f"Loading dataset from {dataset_path}")
+    return datasets.load_from_disk(dataset_path)
   
-#   dataset_name = f'{DATASET_NAME}_sw_(tokenizer={tokenizer.name})_(cs={context_size})'
-#   dataset_path = os.path.join(BASE_DIR, 'sw', dataset_name)
+  train_dataset = datasets.load_dataset(HF_PATH, cache_dir=RAW_DIR, split=f'train', streaming=True)
+  test_dataset = datasets.load_dataset(HF_PATH, cache_dir=RAW_DIR, split='validation')
   
-#   if os.path.exists(dataset_path):
-#     dataset = datasets.load_from_disk(dataset_path)
-#     dataset.name = dataset_name
-#     return dataset
+  stride = context_size // 2
+  input_ids = []
+  current_window = []
   
-#   dataset = datasets.load_dataset(huggingface_path, cache_dir=f'{BASE_DIR}/raw/{DATASET_NAME}', streaming=True)
+  start_time = time.time()
+  dataset_size = 2100000
+  print("Generating windows...")
   
-#   dataset = load_tinystories_dataset_tokenized(tokenizer)
-#   dataset = apply_sliding_window(dataset, tokenizer, context_size)
-#   print(f"Saving sliding dataset to {dataset_path}")
-#   dataset.set_format(type='torch', columns=['input_ids'])
-#   dataset.save_to_disk(dataset_path)
+  for i, sequence in enumerate(train_dataset):
+    sequence = tokenizer.encode(sequence['text'])
+    current_window.extend(sequence)
+    current_window.append(tokenizer.eos_token_id)
+    while len(current_window) >= context_size:
+      input_ids.append(current_window[:context_size])
+      current_window = current_window[stride:]
+    elapsed_time = time.time() - start_time
+    time_remaining = elapsed_time * (dataset_size / (i + 1) - 1)
+    time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
+    print(f"\r[{i+1}/{dataset_size}] | Time remaining: {time_remaining}", end='')
   
-#   dataset.name = dataset_name
-#   return dataset
+  train_dataset = Dataset.from_dict({'input_ids': input_ids})
   
-def load_tinystories_dataloaders(tokenizer, context_size=512, batch_size=32, train_size=None, val_size=None, test_size=None, sw=False):
+  tv_split = train_dataset.train_test_split(test_size=VAL_SIZE)
+  train_dataset = tv_split['train']
+  val_dataset = tv_split['test']
   
-  # if sw:
-  #   dataset = load_tinystories_dataset_sliding_window(tokenizer, context_size)
-  # else:
-  #   dataset = load_tinystories_dataset_padded(tokenizer, context_size)
+  test_dataset = test_dataset.map(lambda x: {'input_ids': tokenizer.encode(x['text'][0])[:context_size]})
   
-  if val_size is None:
-    val_size = len(dataset['train']) // 20
-  if train_size is None:
-    train_size = len(dataset['train']) - val_size
-    
-  if test_size is None:
-    test_size = len(dataset['test'])
-  
-  assert len(dataset['train']) >= train_size + val_size, f"train_size + val_size ({train_size + val_size}) is greater than the number of training samples ({len(dataset['train'])})"
-  assert len(dataset['test']) >= test_size, f"test_size ({test_size}) is greater than the number of test samples ({len(dataset['test'])})"
-  
-  dataset = datasets.DatasetDict({
-    'train': dataset['train'].select(range(train_size)),
-    'val': dataset['train'].select(range(train_size, train_size + val_size)),
-    'test': dataset['test'].select(range(test_size))
+  dataset = DatasetDict({
+    'train': train_dataset,
+    'val': val_dataset,
+    'test': test_dataset
   })
+  
+  dataset.set_format(type='torch', columns=['input_ids'])
+  dataset.save_to_disk(dataset_path)
+  
+  return dataset
+  
+def load_tinystories_dataloaders(tokenizer, context_size=512, batch_size=32):
+  
+  dataset = load_tinystories_dataset_preprocessed(tokenizer, context_size)
   
   train_dataloader = DataLoader(dataset['train'], batch_size=batch_size, shuffle=True)
   val_dataloader = DataLoader(dataset['val'], batch_size=batch_size, shuffle=False)
