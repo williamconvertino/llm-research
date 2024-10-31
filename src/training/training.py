@@ -10,7 +10,7 @@ results_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../
 
 learning_rate = 1e-5
 weight_decay = 0.01
-max_grad_norm = 1.0
+max_grad_norm = 0.6
 
 def step(model, batch):
   input_ids = batch['input_ids'].to(model.device)
@@ -37,7 +37,7 @@ def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=N
   
   record_steps = min(record_steps, len(train_dataloader))
   record_steps = max(record_steps, 1)
-    
+  
   if simulation_name is None:
     simulation_name = model.name
 

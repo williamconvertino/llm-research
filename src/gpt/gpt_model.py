@@ -43,12 +43,10 @@ class GPTModel(nn.Module):
     self.num_params_formatted = f"{round(self.num_params / 1000000, 2)}M"
     
     if name is None:
-      self.name = "GPTModel"
+      self.name = f"GPTModel_{self.num_params_formatted}"
     else:
       self.name = name
-      
-    self.name += f"_{self.num_params_formatted}"
-    
+  
     self._init_weights()
         
   def _init_weights(self):
@@ -58,7 +56,7 @@ class GPTModel(nn.Module):
       nn.init.normal_(self.output_linear.weight, std=std)
       nn.init.constant_(self.output_linear.bias, 0)
           
-  def forward(self, x, targets=None, attention_mask=None, padding_token=-1):
+  def forward(self, x, targets=None, padding_token=-1):
     
     p = self.positional_encoding(x)
     e = self.embedding(x)
@@ -72,7 +70,7 @@ class GPTModel(nn.Module):
       x = self.dropout_embedding(x)
     
     for block in self.blocks:
-      x = block(x, attention_mask)
+      x = block(x)
     
     if targets is None:
       x = x[:, [-1], :] # During inference, we only care about the last token
