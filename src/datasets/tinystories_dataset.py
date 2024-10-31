@@ -80,7 +80,8 @@ def load_tinystories_dataset_sliding_window(tokenizer, context_size):
   
 def load_tinystories_dataloaders(tokenizer, context_size=512, batch_size=32):
   
-  dataset = load_tinystories_dataset_sliding_window(tokenizer, context_size)
+  # dataset = load_tinystories_dataset_sliding_window(tokenizer, context_size)
+  dataset = load_tinystories_dataset_padded(tokenizer, context_size)
   
   def collate_fn(examples):
     input_ids = torch.stack([torch.tensor(example['input_ids']) for example in examples])
