@@ -1,9 +1,8 @@
 import os
+import math
 import time
 import torch
 from torch.nn.utils import clip_grad_norm_
-from torch.amp import GradScaler, autocast
-from src.evaluation import evaluate_model_loss
 from src.visualization import plot_results
 
 model_base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../models')
@@ -13,28 +12,35 @@ learning_rate = 1e-5
 weight_decay = 0.01
 max_grad_norm = 1.0
 
-DEFAULT_DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+def step(model, batch):
+  input_ids = batch['input_ids'].to(model.device)
+  targets = torch.zeros_like(input_ids).to(model.device)
+  targets[:, :-1] = input_ids[:, 1:]
+  targets[:, -1] = -1
+  _, loss = model(input_ids, targets)
+  return loss
 
-def train(model, tokenizer, train_dataloader, val_dataloader, num_epochs=10, record_steps=None, v=True, device=DEFAULT_DEVICE, simulation_name=None):
-    
-  if record_steps is None:
-    record_steps = len(train_dataloader) // 20
-    
-  if simulation_name is None:
-    simulation_name = model.name
-    
-  device = torch.device(device)
-
-  optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+def train(model, train_dataloader, val_dataloader, num_epochs=10, record_steps=None, v=True, device=None, simulation_name=None):
   
-  if v:
-    print("="*40)
-    print(f"Training model {model.name} [Using device: {device}]")
-    print("="*40)
+  # Device 
+  if device is None:
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+  
+  device = torch.device(device)
   
   model.to(device)
   model.device = device
   
+  # Recording
+  if record_steps is None:
+    record_steps = len(train_dataloader) // 20
+  
+  record_steps = min(record_steps, len(train_dataloader))
+  record_steps = max(record_steps, 1)
+    
+  if simulation_name is None:
+    simulation_name = model.name
+
   train_results = {}
   val_results = {}
   
@@ -45,9 +51,13 @@ def train(model, tokenizer, train_dataloader, val_dataloader, num_epochs=10, rec
     os.makedirs(model_base_dir, exist_ok=True)
   if not os.path.exists(results_base_dir):
     os.makedirs(results_base_dir, exist_ok=True)
-  
+
+  # Training Initialization
+  optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
   start_time = time.time()
+  print(f"Training model {simulation_name} [Using device: {device}]")
   
+  # Training Loop
   for epoch in range(num_epochs):
     
     model.train()
@@ -69,17 +79,7 @@ def train(model, tokenizer, train_dataloader, val_dataloader, num_epochs=10, rec
               
       optimizer.zero_grad()
       
-      input_ids = batch['input_ids'].to(model.device)
-      
-      attention_mask = batch.get('attention_mask', None)
-      if attention_mask is not None:
-        attention_mask = attention_mask.to(model.device)
-      
-      targets = torch.zeros_like(input_ids).to(model.device)
-      targets[:, :-1] = input_ids[:, 1:]
-      targets[:, -1] = tokenizer.pad_token_id
-      
-      _, loss = model(input_ids, targets, attention_mask=attention_mask, padding_token=tokenizer.pad_token_id)
+      loss = step(model, batch)
       
       epoch_loss += loss.item()
       loss.backward()
@@ -87,26 +87,31 @@ def train(model, tokenizer, train_dataloader, val_dataloader, num_epochs=10, rec
       optimizer.step()
       
       if (i + 1) % record_steps == 0 or (i == 0 and epoch == 0):
+        
+        val_loss = 0
+        for v_batch in val_dataloader:
+          val_loss += step(model, v_batch).item()
+        val_loss /= len(val_dataloader)
+          
         train_results[epoch]['batch_losses'].append((i, loss.item()))
-        val_results[epoch]['batch_losses'].append((i, evaluate_model_loss(model, tokenizer, val_dataloader)))
-        most_recent_val_string = f"{val_results[epoch]['batch_losses'][-1][1]:.4f}"
-
-      if v:
-        elapsed_time = time.time() - batch_start_time
-        time_remaining = (elapsed_time / (i + 1)) * (len(train_dataloader) - (i + 1))
-        time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
-        print(f"\rEpoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item():.4f} | Most Recent Val Loss: {most_recent_val_string} | Batch Time Remaining: {time_remaining}", end='', flush=True)
+        val_results[epoch]['batch_losses'].append((i, val_loss))
+        
+        most_recent_val_string = f"{val_loss:.4f}"
+      
+      elapsed_time = time.time() - batch_start_time
+      time_remaining = (elapsed_time / (i + 1)) * (len(train_dataloader) - (i + 1))
+      time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
+      print(f"\rEpoch {epoch + 1} | Batch {i + 1} / {len(train_dataloader)} | Train Loss: {loss.item():.4f} | Most Recent Val Loss: {most_recent_val_string} | Batch Time Remaining: {time_remaining}", end='', flush=True)
     
     avg_epoch_loss = epoch_loss / len(train_dataloader)
     
     train_results[epoch]['loss'] = avg_epoch_loss
-    val_results[epoch]['loss'] = evaluate_model_loss(model, tokenizer, val_dataloader)
+    val_results[epoch]['loss'] = val_loss
     
-    if v:
-      time_elapsed = time.time() - start_time
-      time_remaining = (time_elapsed / (epoch + 1)) * (num_epochs - (epoch + 1))
-      time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
-      print(f"Epoch {epoch + 1} / {num_epochs} | Train Loss: {avg_epoch_loss:.4f} | Val Loss: {val_results[epoch]['loss']:.4f} | Time Remaining: {time_remaining}")
+    time_elapsed = time.time() - start_time
+    time_remaining = (time_elapsed / (epoch + 1)) * (num_epochs - (epoch + 1))
+    time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
+    print(f"Epoch {epoch + 1} / {num_epochs} | Train Loss: {avg_epoch_loss:.4f} | Val Loss: {val_results[epoch]['loss']:.4f} | Time Remaining: {time_remaining}")
     
     torch.save(model.state_dict(), os.path.join(model_base_dir, f"{simulation_name}_epoch_{epoch}.pt"))
     torch.save(train_results, train_results_path)
@@ -114,9 +119,8 @@ def train(model, tokenizer, train_dataloader, val_dataloader, num_epochs=10, rec
     
     plot_results(train_results, val_results, model, simulation_name)
     
-  if v:
-    print("="*40)
-    print(f"Training complete | Train Loss: {avg_epoch_loss:.4f} | Val Loss: {val_results[epoch]['loss']:.4f}")
-    print("="*49)
+  print("="*40)
+  print(f"Training complete | Train Loss: {avg_epoch_loss:.4f} | Val Loss: {val_results[epoch]['loss']:.4f}")
+  print("="*49)
     
   return train_results, val_results
