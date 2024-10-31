@@ -48,7 +48,7 @@ def load_tinystories_dataset_preprocessed(tokenizer, context_size):
   
   train_dataset = Dataset.from_dict({'input_ids': input_ids})
   
-  tv_split = train_dataset.train_test_split(test_size=VAL_SIZE)
+  tv_split = train_dataset.train_test_split(test_size=VAL_SIZE, shuffle=False) # shuffle=False because we don't want to mix our windows between train and val
   train_dataset = tv_split['train']
   val_dataset = tv_split['test']
   
