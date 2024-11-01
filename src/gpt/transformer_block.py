@@ -24,7 +24,7 @@ class TransformerBlock(nn.Module):
         
       self.attn = nn.ModuleList(attn)
     
-      total_d_attn = sum([attn.d_attn for attn in self.attn])
+      total_d_attn = sum([attn.d_attn * attn.num_heads for attn in self.attn])
       self.attn_proj = nn.Linear(total_d_attn, self.d_embedding) # Note that we do the projection outside of our attention modules for efficiency (as we may have multiple different attention modules)
     
       if self.attn_layer_norm in ['pre_skip', 'post_skip']:
