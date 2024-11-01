@@ -89,3 +89,22 @@ class GPTModel(nn.Module):
       loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=padding_token)
     
     return logits, loss
+  
+  def generate(self, x, tokenizer, max_len=100):
+    
+    eos_token = tokenizer.eos_token_id
+    
+    new_sequence = []
+    mr_token = None
+    
+    self.eval()
+    with torch.no_grad():
+      while mr_token != eos_token and len(new_sequence) < max_len:
+        logits, _ = self.forward(x)
+        logits = logits[:, -1, :]
+        mr_token = torch.argmax(logits, dim=-1)
+        new_sequence.append(mr_token.item())
+        x = torch.cat([x, mr_token.unsqueeze(1)], dim=1)
+        
+    decoded_sequence = tokenizer.decode(new_sequence)
+    return decoded_sequence
