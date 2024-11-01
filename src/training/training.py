@@ -98,7 +98,7 @@ def train(model, tokenizer, train_dataloader, val_dataloader, num_epochs=10, rec
         
         most_recent_val_string = f"{val_loss:.4f}"
       
-      if i % 500 == 0:
+      if (i+1) % 100 == 0 or i <= 1000:
         elapsed_time = time.time() - batch_start_time
         time_remaining = (elapsed_time / (i + 1)) * (len(train_dataloader) - (i + 1))
         time_remaining = time.strftime("%H:%M:%S", time.gmtime(time_remaining))
