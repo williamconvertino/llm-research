@@ -19,7 +19,6 @@ class BlockConfig:
   num_layers: int = 1
   attn: Union[tuple, list] = (AttentionConfig(),)
   use_ff: bool = True
-  d_attn: Optional[int] = None
   d_ff: Optional[int] = None
   attn_layer_norm: str = 'pre_skip'
   ff_layer_norm: str = 'pre_skip'
@@ -32,7 +31,8 @@ class BlockConfig:
     attn = []
     for attn_config in self.attn:
       if isinstance(attn_config, dict):
-        attn.append(AttentionConfig(**attn_config))
+        attn_config = AttentionConfig(**attn_config)
+      attn.append(attn_config)
       
     self.attn = tuple(attn)
 
@@ -49,20 +49,19 @@ class GPTConfig:
   def __post_init__(self):
     # Allow blocks parameter to contain dictionaries
     blocks = []
-    for block_config in self.blocks:
-      if isinstance(block_config, dict):
-        blocks.append(BlockConfig(**block_config))
+    for block in self.blocks:
+      if isinstance(block, dict):
+        block = BlockConfig(**block)
+      blocks.append(block)
     self.blocks = tuple(blocks)
     # Add d_embedding to block and attention configs
     for block in self.blocks:
-      block.d_embedding = self.d_embedding
-      if block.d_attn is None:
-        assert self.d_embedding % block.num_heads == 0, f"d_embedding ({self.d_embedding}) must be divisible by num_heads ({block.num_heads}) or d_attn must be provided in the block"
-        block.d_attn = self.d_embedding // block.num_heads  
+      block.d_embedding = self.d_embedding 
       if block.d_ff is None:
         assert self.d_ff is not None, "d_ff must be provided if d_ff is not set in the block"  
         block.d_ff = self.d_ff
       for attn in block.attn:
         attn.d_embedding = self.d_embedding
         if attn.d_attn is None:
-          attn.d_attn = block.d_attn
+          assert self.d_embedding % attn.num_heads == 0, "d_embedding must be divisible by num_heads if d_attn is not set in the attention config"
+          attn.d_attn = self.d_embedding // attn.num_heads

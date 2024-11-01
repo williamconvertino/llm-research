@@ -59,7 +59,7 @@ class GPTModel(nn.Module):
     if not self.tie_output_weights:
       nn.init.normal_(self.output_linear.weight, std=std)
       nn.init.constant_(self.output_linear.bias, 0)
-          
+  
   def forward(self, x, targets=None, padding_token=-1):
     
     p = self.positional_encoding(x)

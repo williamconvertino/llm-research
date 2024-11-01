@@ -38,7 +38,10 @@ class TransformerBlock(nn.Module):
       
       if self.p_dropout_ff > 0:
         self.ff_dropout = nn.Dropout(self.p_dropout_ff)
-        
+  
+  def _init_weights(self):
+    nn.init.xavier_normal_(self.attn_proj.weight)
+  
   def forward(self, x, e=None, p=None):
     
     if self.use_attn:
