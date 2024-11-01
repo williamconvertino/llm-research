@@ -45,8 +45,13 @@ class TransformerBlock(nn.Module):
   def forward(self, x, e=None, p=None):
     
     if self.use_attn:
+      attn_output = [attn(x, e, p) for attn in self.attn]
       
-      attn_output = torch.stack([attn(x, e, p) for attn in self.attn], dim=-1)
+      if len(attn_output) > 1:
+        attn_output = torch.cat(attn_output, dim=-1)
+      else:
+        attn_output = attn_output[0]
+      
       attn_output = self.attn_proj(attn_output)
       
       if self.attn_layer_norm == 'pre_skip':
