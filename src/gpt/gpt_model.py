@@ -9,8 +9,8 @@ class GPTModel(nn.Module):
     super().__init__()
     
     # Model Parameters
-    self.context_size = gpt_config.context_size
     self.vocab_size = gpt_config.vocab_size
+    self.context_size = gpt_config.context_size
     self.d_embedding = gpt_config.d_embedding
     self.tie_output_weights = gpt_config.tie_output_weights
     self.use_embedding_layer_norm = gpt_config.use_embedding_layer_norm
@@ -21,10 +21,14 @@ class GPTModel(nn.Module):
     self.positional_encoding = PositionalEncoding(self.context_size, self.d_embedding)
     
     if self.use_embedding_layer_norm:
-      self.embedding_layer_norm = nn.LayerNorm(self.d_embedding)
+      self.x_layer_norm = nn.LayerNorm(self.d_embedding)
+      self.e_layer_norm = nn.LayerNorm(self.d_embedding)
+      self.p_layer_norm = nn.LayerNorm(self.d_embedding)
     
     if self.p_dropout_embedding > 0:
-      self.dropout_embedding = nn.Dropout(self.p_dropout_embedding)
+      self.x_dropout = nn.Dropout(self.p_dropout_embedding)
+      self.e_dropout = nn.Dropout(self.p_dropout_embedding)
+      self.p_dropout = nn.Dropout(self.p_dropout_embedding)
     
     blocks = []
     
@@ -64,13 +68,17 @@ class GPTModel(nn.Module):
     x = e + p
     
     if self.use_embedding_layer_norm:
-      x = self.embedding_layer_norm(x)
+      x = self.x_layer_norm(x)
+      e = self.e_layer_norm(e)
+      p = self.p_layer_norm(p)
       
     if self.p_dropout_embedding > 0:
-      x = self.dropout_embedding(x)
-    
+      x = self.x_dropout(x)
+      e = self.e_dropout(e)
+      p = self.p_dropout(p)
+      
     for block in self.blocks:
-      x = block(x)
+      x = block(x, e, p)
     
     if targets is None:
       x = x[:, [-1], :] # During inference, we only care about the last token
