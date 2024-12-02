@@ -44,7 +44,9 @@ class Attention(nn.Module):
       Q = torch.matmul(x, self.W_q)
       K = torch.matmul(x, self.W_k)
       V = torch.matmul(x, self.W_v)
-      
+    
+    print(Q.shape)
+    
     if self.attn_kernel_fn == 'softmax':
       attn_scores = F.softmax(torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_embed), dim=-1)
     elif self.attn_kernel_fn == 'linear':
@@ -55,14 +57,7 @@ class Attention(nn.Module):
       attn_scores = torch.cdist(Q, K, p=1).mul(-self.gamma).exp()
     
     attn_output = torch.matmul(attn_scores, V)
-    
-    print(attn_output.shape)
-    
     attn_output = attn_output.view(attn_output.size(0), -1)
-    
-    print(attn_output.shape)
-    print(self.W_o.weight.shape)
-    
     attn_output = self.W_o(attn_output)
     
     return attn_output
