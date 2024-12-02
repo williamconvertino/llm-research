@@ -131,7 +131,9 @@ class GDM(nn.Module):
     f_k = torch.zeros_like(p)
     
     for gd_block in self.gd_blocks:
+      print(f_k.shape)
       f_k = gd_block.gd_step(f_k, attn_scores, e, self.W_v, self.W_e.weight)
+      print(f_k.shape)
     
     if targets is None:
       logits = self.lm_head(f_k[:, :-1, :])
