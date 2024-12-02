@@ -40,6 +40,8 @@ class GDBlock(nn.Module):
     
     print(attn_scores.shape)
     print(V.shape)
+    print((attn_scores @ V).shape)
+    print(self.A_lr.shape)
     
     delta_A = (attn_scores @ V) * self.A_lr
     print(delta_A.shape)
