@@ -60,7 +60,7 @@ def evaluate_model_with_config(config, model_type, max_epoch=None):
   else:
     raise ValueError("Invalid model type")
 
-  load_mrm(model, max_epoch=max_epoch)
+  model = load_mrm(model, max_epoch=max_epoch)
 
   tokenizer = TinyStoriesTokenizer()
   val_dataset = TinyStoriesDataset(tokenizer, 'val', context_size=config.context_size)

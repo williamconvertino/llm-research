@@ -35,7 +35,7 @@ def load_mrm(model, max_epoch=None):
   
   model_path, latest_epoch = get_latest_epoch_path(model_name, max_epoch)
   
-  model.load_state_dict(torch.load(model_path))
+  model.load_state_dict(torch.load(model_path, weights_only=True))
 
   print(f"Loaded model with epoch={latest_epoch}")
   return model
