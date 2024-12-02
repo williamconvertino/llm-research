@@ -55,6 +55,9 @@ class Attention(nn.Module):
       attn_scores = torch.cdist(Q, K, p=1).mul(-self.gamma).exp()
     
     attn_output = torch.matmul(attn_scores, V)
+    
+    print(attn_output.shape)
+    
     attn_output = attn_output.view(attn_output.size(0), -1)
     
     print(attn_output.shape)
