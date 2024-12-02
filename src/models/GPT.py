@@ -34,13 +34,15 @@ class Attention(nn.Module):
 
   def forward(self, x, e, p):
     B, S, E = x.size()
-    x = x.unsqueeze(1).repeat(1, self.n_head, 1, 1)
     
     if self.use_ppe_attn:
+      p = p.unsqueeze(1).repeat(1, self.n_head, 1, 1)
+      e = e.unsqueeze(1).repeat(1, self.n_head, 1, 1)
       Q = torch.matmul(p, self.W_q)
       K = torch.matmul(p, self.W_k)
       V = torch.matmul(e, self.W_v)
     else:
+      x = x.unsqueeze(1).repeat(1, self.n_head, 1, 1)
       Q = torch.matmul(x, self.W_q)
       K = torch.matmul(x, self.W_k)
       V = torch.matmul(x, self.W_v)
