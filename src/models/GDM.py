@@ -9,9 +9,12 @@ class GDBlock(nn.Module):
     super().__init__()
     
     self.use_ff = config.use_ff
+    self.use_gd_bias = config.use_gd_bias
     
     self.A_lr = nn.Parameter(torch.zeros(config.n_head, 1, 1))
-    self.B_lr = nn.Parameter(torch.zeros(1, 1, 1))
+    
+    if self.use_gd_bias:
+      self.B_lr = nn.Parameter(torch.zeros(1, 1, 1))
     
     if self.use_ff:
       self.ff = nn.Sequential(
@@ -37,20 +40,22 @@ class GDBlock(nn.Module):
     
     V = (e - E_W_e).unsqueeze(1) @ W_v
     
-    delta_A = (attn_scores @ V) * self.A_lr
-    delta_A = delta_A.sum(dim=1)
+    delta_A_x = (attn_scores @ V) * self.A_lr
+    delta_A_x = delta_A_x.sum(dim=1)
     
-    delta_B = (e - E_W_e) * self.B_lr
-    delta_B = delta_B.sum(dim=1).unsqueeze(1)
+    delta_f_k = delta_A_x
     
-    delta_f_k = delta_A + delta_B
+    if self.use_gd_bias:
+      delta_B = (e - E_W_e) * self.B_lr
+      delta_B = delta_B.sum(dim=1).unsqueeze(1)
+      delta_f_k = delta_f_k + delta_B
+      
     delta_f_k = delta_f_k / S
     
     if self.use_ff:
       return self.ff(f_k + delta_f_k)
     
     return f_k + delta_f_k
-    
   
 class GDM(nn.Module):
 
