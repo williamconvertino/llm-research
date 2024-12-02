@@ -140,8 +140,6 @@ class GPT(nn.Module):
     device = x.device
     B, S = x.size()
     
-    print(S, self.context_size, self.W_p.weight.shape)
-    
     e = self.W_e(x)
     p = self.W_p(torch.arange(S, device=device))
     x = e + p

@@ -62,6 +62,7 @@ def train_model_with_config(config, model_type, seed=0):
     raise ValueError("Invalid model type")
   
   tokenizer = TinyStoriesTokenizer()
+  print(len(tokenizer))
   train_dataset = TinyStoriesDataset(tokenizer, 'train', context_size=config.context_size)
   val_dataset = TinyStoriesDataset(tokenizer, 'val', context_size=config.context_size)
   
