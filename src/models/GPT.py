@@ -36,7 +36,7 @@ class Attention(nn.Module):
     B, S, E = x.size()
     
     if self.use_ppe_attn:
-      p = p.unsqueeze(1).repeat(1, self.n_head, 1, 1)
+      p = p.unsqueeze(0).unsqueeze(1).repeat(1, self.n_head, 1, 1)
       e = e.unsqueeze(1).repeat(1, self.n_head, 1, 1)
       Q = torch.matmul(p, self.W_q)
       K = torch.matmul(p, self.W_k)
