@@ -170,7 +170,6 @@ class GPT(nn.Module):
     
     for _ in range(max_new_tokens):
       logits, _ = self(x)
-      print(logits.shape)
       idx_next = torch.argmax(logits[:, -1, :], dim=-1).unsqueeze(-1)
       x = torch.cat((x, idx_next), dim=1)
       if eos_token is not None and idx_next.item() == eos_token:
@@ -178,29 +177,29 @@ class GPT(nn.Module):
     
     return x
   
-  # def beam_search(self, x, max_new_tokens=100, num_beams=3, eos_token=None):
+  def beam_search(self, x, max_new_tokens=100, num_beams=3, eos_token=None):
     
-  #   beams = [{'x': x, 'score': 0, 'eos': False} for _ in range(num_beams)]
+    beams = [{'x': x, 'score': 0, 'eos': False} for _ in range(num_beams)]
     
-  #   for _ in range(max_new_tokens):
-  #     new_sequences = []
-  #     for beam in beams:
-  #       if beam['eos']:
-  #         new_sequences.append(beam)
-  #         continue
-  #       x = beam['x']
-  #       logits, _ = self(x)
-  #       topk = torch.topk(logits, num_beams, dim=-1)
-  #       for i in range(num_beams):
-  #         idx_next = topk.indices[:, i]
-  #         score = topk.values[0, i]
-  #         new_x = torch.cat((x, idx_next), dim=1)
-  #         new_eos = eos_token is not None and idx_next.item() == eos_token
-  #         new_sequences.append({'x': new_x, 'score': beam['score'] + score.item(), 'eos': new_eos})
-  #     new_sequences.sort(key=lambda x: x['score'] / (len(x['x']) + 1), reverse=True)
-  #     beams = new_sequences[:num_beams]
-  #     if all(beam['eos'] for beam in beams):
-  #       break
+    for _ in range(max_new_tokens):
+      new_sequences = []
+      for beam in beams:
+        if beam['eos']:
+          new_sequences.append(beam)
+          continue
+        x = beam['x']
+        logits, _ = self(x)
+        topk = torch.topk(logits[:, -1, :], num_beams, dim=-1)
+        for i in range(num_beams):
+          idx_next = topk.indices[0, i].unsqueeze(0).unsqueeze(0)
+          score = topk.values[0, i]
+          new_x = torch.cat((x, idx_next), dim=1)
+          new_eos = eos_token is not None and idx_next.item() == eos_token
+          new_sequences.append({'x': new_x, 'score': beam['score'] + score.item(), 'eos': new_eos})
+      new_sequences.sort(key=lambda x: x['score'] / (len(x['x']) + 1), reverse=True)
+      beams = new_sequences[:num_beams]
+      if all(beam['eos'] for beam in beams):
+        break
   
-  #   most_probable_sequence = max(beams, key=lambda x: x['score'] / (len(x['x']) + 1))
-  #   return most_probable_sequence['x']
+    most_probable_sequence = max(beams, key=lambda x: x['score'] / (len(x['x']) + 1))
+    return most_probable_sequence['x']
