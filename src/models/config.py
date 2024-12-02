@@ -12,7 +12,7 @@ class Config:
     use_ff: bool = True
     attn_kernel_fn: str = 'softmax'
     dropout: float = 0.1
-    next_target_only: False # If True, the model will only predict the next token in the sequence (useful for comparison to GDM)
+    next_target_only: bool = False # If True, the model will only predict the next token in the sequence (useful for comparison to GDM)
     use_ppe_attn: bool = False
 
     def __post_init__(self):
