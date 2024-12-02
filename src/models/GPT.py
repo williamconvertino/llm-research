@@ -30,7 +30,7 @@ class Attention(nn.Module):
     nn.init.normal_(self.W_q, std=0.02)
     nn.init.normal_(self.W_k, std=0.02)
     nn.init.normal_(self.W_v, std=0.02)
-    nn.init.normal_(self.W_o.weight, std=0.02 / math.sqrt(2 * self.n_layer))
+    nn.init.normal_(self.W_o.weight, std=0.02 / math.sqrt(2 * self.config.n_layer))
     if self.config.attn_kernel_fn in ['rbf', 'laplacian']:
       nn.init.constant_(self.gamma, std=0.02)
 
