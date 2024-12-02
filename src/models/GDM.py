@@ -35,7 +35,7 @@ class GDBlock(nn.Module):
     T = torch.exp(T)
     E_W_e = (T @ W_e) / (T.sum(dim=-1, keepdim=True) + 1e-8) # Add epsilon for numerical stability
     
-    V = (e - E_W_e) @ W_v
+    V = (e - E_W_e).unsqueeze(1) @ W_v
     
     delta_A = (attn_scores @ V) * self.A_lr
     delta_A = delta_A.sum(dim=1)
