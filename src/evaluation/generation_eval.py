@@ -17,7 +17,7 @@ long_test_sequences = [
 def generate_from_sequence(model, tokenizer, sequence, max_new_tokens=100, return_new_tokens_only=True):
   model.eval()
   with torch.no_grad():
-    tokenized_sequence = tokenizer(sequence)['input_ids'].unsqueeze(0)
+    tokenized_sequence = torch.tensor(tokenizer(sequence)['input_ids']).unsqueeze(0)
     output = model.generate(tokenized_sequence, max_new_tokens, eos_token = tokenizer.eos_token_id)
     generated_sequence = tokenizer.decode(output[0].tolist())
     if return_new_tokens_only:
