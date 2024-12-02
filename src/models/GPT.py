@@ -33,6 +33,8 @@ class Attention(nn.Module):
       nn.init.normal_(self.gamma, std=0.02)
 
   def forward(self, x, e, p):
+    B, S, E = x.size()
+    x = x.unsqueeze(1).repeat(1, self.n_head, 1, 1)
     print(x.shape)
     print(self.W_q.shape)
     if self.use_ppe_attn:
