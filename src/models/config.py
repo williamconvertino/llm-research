@@ -19,9 +19,10 @@ class Config:
     use_ff: bool = True
     use_ppe: bool = False
     use_nto: bool = False
+    use_gd_bias: bool = False
     
     def __post_init__(self):
-        assert self.model_type in ['GPT', 'GPT_NTO', 'GDM', 'GDM_NTO']
+        assert self.model_type in ['GPT', 'GDM']
         assert self.attn_kernel_fn in ['softmax', 'linear', 'rbf', 'laplacian']
         self.d_ff = self.d_embed * 4
         self.name = f'{self.model_type}_{self.d_embed}D_{self.n_head}H_{self.n_layer}L_K={self.attn_kernel_fn}'
@@ -31,3 +32,5 @@ class Config:
             self.name += '_PPE'
         if self.use_nto:
             self.name += '_NTO'
+        if self.model_type == 'GDM' and self.use_gd_bias:
+            self.name += '_GDB'

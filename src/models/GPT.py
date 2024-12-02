@@ -101,6 +101,9 @@ class GPT(nn.Module):
     self.W_e = nn.Embedding(config.vocab_size, config.d_embed)
     self.W_p = nn.Embedding(config.context_size, config.d_embed)
     
+    self.dropout_e = nn.Dropout(config.dropout)
+    self.dropout_p = nn.Dropout(config.dropout)
+    
     # Attention Blocks
     self.attn_blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layer)])
 
@@ -127,6 +130,10 @@ class GPT(nn.Module):
     
     e = self.W_e(x)
     p = self.W_p(torch.arange(S, device=device))
+    
+    e = self.dropout_e(e)
+    p = self.dropout_p(p).unsqueeze(0).expand(B, -1, -1)
+    
     x = e + p
 
     for attn_block in self.attn_blocks:
