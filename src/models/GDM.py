@@ -30,14 +30,12 @@ class GDBlock(nn.Module):
   def gd_step(self, f_k, attn_scores, e, W_v, W_e):
     
     B, S, E = e.shape
-    print(f_k.shape)
     T = f_k[:S, :] @ W_e.transpose(-2, -1)
     T = torch.clamp(T, -10, 10) # Prevent overflow
     T = torch.exp(T)
     E_W_e = (T @ W_e) / (T.sum(dim=-1, keepdim=True) + 1e-8) # Add epsilon for numerical stability
+    E_W_e = E_W_e.unsqueeze(0).expand(B, -1, -1, -1)
 
-    print(e.shape)
-    print(E_W_e.shape)
     V = (e - E_W_e) @ W_v
     
     delta_A = (attn_scores @ V) * self.A_lr
