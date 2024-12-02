@@ -133,17 +133,15 @@ class GDM(nn.Module):
     for gd_block in self.gd_blocks:
       f_k = gd_block.gd_step(f_k, attn_scores, e, self.W_v, self.W_e.weight)
     
-    print(f_k.shape)
-    
     if targets is None:
-      logits = self.lm_head(f_k)
+      logits = self.lm_head(f_k[:, :-1, :])
       loss = None
     elif self.next_target_only:
       targets = targets[:, -1].contiguous()
-      logits = self.lm_head(f_k[:, -1])
+      logits = self.lm_head(f_k[:, -1, :])
       loss = F.cross_entropy(logits, targets)
     else:
-      logits = self.lm_head(f_k)
+      logits = self.lm_head(f_k[:, 1:, :])
       targets = targets.contiguous()
       loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
       
