@@ -38,18 +38,10 @@ class GDBlock(nn.Module):
     v = (e - E_W_e).unsqueeze(1)
     V = v @ W_v
     
-    print(attn_scores.shape)
-    print(V.shape)
-    print((attn_scores @ V).shape)
-    print(self.A_lr.shape)
-    
     delta_A = (attn_scores @ V) * self.A_lr
-    print(delta_A.shape)
     delta_A = delta_A.sum(dim=1)
     
     delta_B = (e - E_W_e) * self.B_lr
-    print(delta_B.shape)
-    delta_B = delta_B.sum(dim=2)
     
     delta_f_k = delta_A.sum(dim=1) + delta_B.sum(dim=2)
     delta_f_k = delta_f_k / S
@@ -122,8 +114,6 @@ class GDM(nn.Module):
     
     e = self.W_e(x)
     p = self.W_p(torch.arange(S + 1, device=device))
-    
-    print(p.shape)
     
     Q = p @ self.W_q
     K = p[:-1, :] @ self.W_k
