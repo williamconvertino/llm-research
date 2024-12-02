@@ -64,13 +64,15 @@ class Attention(nn.Module):
     elif self.config.attn_kernel_fn == 'laplacian':
       attn_scores = torch.cdist(Q, K, p=1).mul(-self.gamma).exp()
     
+    print(attn_scores.min(), attn_scores.max())
+    
     # Add causal mask (if not NTO)
     if not self.config.use_nto:
       mask = torch.tril(torch.ones(S, S, device=device))
       mask = mask.bool()
       attn_bias = torch.zeros(S, S, device=device)
       attn_bias.masked_fill_(mask.logical_not(), float("-inf"))
-      attn_scores = attn_scores + attn_bias
+      attn_scores += attn_scores + attn_bias
     
     # Generate attention outputs
     attn_output = torch.matmul(attn_scores, V)
