@@ -54,6 +54,9 @@ class Attention(nn.Module):
       K = torch.matmul(x, self.W_k)
       V = torch.matmul(x, self.W_v)
       
+    print(Q.min(), Q.max())
+    print(K.min(), K.max())
+      
     # Compute attention scores
     if self.config.attn_kernel_fn == 'softmax':
       attn_scores = F.softmax(torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.config.d_embed), dim=-1)
@@ -63,8 +66,6 @@ class Attention(nn.Module):
       attn_scores = torch.cdist(Q, K, p=2).pow(2).mul(-self.gamma).exp()
     elif self.config.attn_kernel_fn == 'laplacian':
       attn_scores = torch.cdist(Q, K, p=1).mul(-self.gamma).exp()
-    
-    print(attn_scores.min(), attn_scores.max())
     
     # Add causal mask (if not NTO)
     if not self.config.use_nto:
