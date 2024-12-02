@@ -72,7 +72,7 @@ class Attention(nn.Module):
       mask = mask.bool()
       attn_bias = torch.zeros(S, S, device=device)
       attn_bias.masked_fill_(mask.logical_not(), float("-inf"))
-      attn_scores += attn_scores + attn_bias
+      attn_scores = attn_scores + attn_bias
     
     # Generate attention outputs
     attn_output = torch.matmul(attn_scores, V)
