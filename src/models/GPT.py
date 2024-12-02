@@ -193,6 +193,8 @@ class GPT(nn.Module):
         for i in range(num_beams):
           idx_next = topk.indices[0, i].unsqueeze(-1)
           score = topk.values[0, i]
+          print(x.shape)
+          print(idx_next.shape)
           new_x = torch.cat((x, idx_next), dim=1)
           new_eos = eos_token is not None and idx_next.item() == eos_token
           new_sequences.append({'x': new_x, 'score': beam['score'] + score.item(), 'eos': new_eos})
