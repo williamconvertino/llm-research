@@ -30,7 +30,7 @@ class GDBlock(nn.Module):
   def gd_step(self, f_k, attn_scores, e, W_v, W_e):
     
     B, S, E = e.shape
-    T = f_k[:S, :] @ W_e.transpose(-2, -1)
+    T = f_k[:, :S, :] @ W_e.transpose(-2, -1)
     T = torch.clamp(T, -10, 10) # Prevent overflow
     T = torch.exp(T)
     E_W_e = (T @ W_e) / (T.sum(dim=-1, keepdim=True) + 1e-8) # Add epsilon for numerical stability
@@ -128,13 +128,11 @@ class GDM(nn.Module):
     elif self.attn_kernel_fn == 'laplacian':
       attn_scores = torch.cdist(Q, K, p=1).mul(-self.gamma).exp()
     
-    f_k = torch.zeros_like(p)
+    f_k = torch.zeros(B, S + 1, self.d_embed, device=device)
     
     for gd_block in self.gd_blocks:
-      print(f_k.shape)
       f_k = gd_block.gd_step(f_k, attn_scores, e, self.W_v, self.W_e.weight)
-      print(f_k.shape)
-    
+      
     if targets is None:
       logits = self.lm_head(f_k[:, :-1, :])
       loss = None
