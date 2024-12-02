@@ -4,7 +4,7 @@ from dataclasses import dataclass
 @dataclass
 class Config:
     
-    model_type: str # 'GPT' or 'GDM'
+    model_type: str
     
     context_size: int
     vocab_size: int
@@ -18,10 +18,9 @@ class Config:
     attn_kernel_fn: str = 'softmax'
     use_ff: bool = True
     use_ppe: bool = False
-    use_nto: bool = False # Only predict the N+1 token
     
     def __post_init__(self):
-        assert self.model_type in ['GPT', 'GDM']
+        assert self.model_type in ['GPT', 'GPT_NTO', 'GDM', 'GDM_NTO']
         assert self.attn_kernel_fn in ['softmax', 'linear', 'rbf', 'laplacian']
         self.d_ff = self.d_embed * 4
         self.name = f'{self.model_type}_{self.d_embed}D_{self.n_head}H_{self.n_layer}L_K={self.attn_kernel_fn}'
@@ -29,5 +28,3 @@ class Config:
             self.name += '_FF'
         if self.use_ppe:
             self.name += '_PPE'
-        if self.use_nto:
-            self.name += '_NTO'

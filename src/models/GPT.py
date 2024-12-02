@@ -10,75 +10,48 @@ class Attention(nn.Module):
     
     self.config = config
 
-    if self.config.attn_kernel_fn in ['rbf', 'laplacian']:
-      self.gamma = nn.Parameter(torch.ones((1, config.n_head, 1, 1)))
-
     if self.config.use_ppe:
       self.ln_p = nn.LayerNorm(config.d_embed, bias=False)
       self.ln_e = nn.LayerNorm(config.d_embed, bias=False)
     else:
       self.ln_x = nn.LayerNorm(config.d_embed, bias=False)
 
-    self.W_q = nn.Parameter(torch.Tensor(config.n_head, config.d_embed, config.d_embed))
-    self.W_k = nn.Parameter(torch.Tensor(config.n_head, config.d_embed, config.d_embed))
-    self.W_v = nn.Parameter(torch.Tensor(config.n_head, config.d_embed, config.d_embed))
+    self.W_q = nn.Linear(config.d_embed, config.n_head * config.d_embed, bias=False)
+    self.W_k = nn.Linear(config.d_embed, config.n_head * config.d_embed, bias=False)
+    self.W_v = nn.Linear(config.d_embed, config.n_head * config.d_embed, bias=False)
     self.W_o = nn.Linear(config.n_head * config.d_embed, config.d_embed, bias=False)
 
+    self.dropout = nn.Dropout(config.dropout)
+    
     self._init_weights()
 
   def _init_weights(self):
-    nn.init.normal_(self.W_q, std=0.02)
-    nn.init.normal_(self.W_k, std=0.02)
-    nn.init.normal_(self.W_v, std=0.02)
+    nn.init.normal_(self.W_q.weight, std=0.02)
+    nn.init.normal_(self.W_k.weight, std=0.02)
+    nn.init.normal_(self.W_v.weight, std=0.02)
     nn.init.normal_(self.W_o.weight, std=0.02 / math.sqrt(2 * self.config.n_layer))
-    if self.config.attn_kernel_fn in ['rbf', 'laplacian']:
-      nn.init.constant_(self.gamma, std=0.02)
 
   def forward(self, x, e, p):
     device = x.device
     B, S, E = x.size()
     
-    # Get Q, K, and V
     if self.config.use_ppe:
-      p = self.ln_p(p)
       e = self.ln_e(e)
-      p = p.unsqueeze(0).unsqueeze(1).repeat(1, self.config.n_head, 1, 1)
-      e = e.unsqueeze(1).repeat(1, self.config.n_head, 1, 1)
-      Q = torch.matmul(p, self.W_q)
-      K = torch.matmul(p, self.W_k)
-      V = torch.matmul(e, self.W_v)
+      p = self.ln_p(p)
+      Q = self.W_q(p).view(B, S, self.config.n_head, self.config.d_embed).transpose(1, 2)
+      K = self.W_k(p).view(B, S, self.config.n_head, self.config.d_embed).transpose(1, 2)
+      V = self.W_v(e).view(B, S, self.config.n_head, self.config.d_embed).transpose(1, 2)
     else:
       x = self.ln_x(x)
-      x = x.unsqueeze(1).repeat(1, self.config.n_head, 1, 1)
-      Q = torch.matmul(x, self.W_q)
-      K = torch.matmul(x, self.W_k)
-      V = torch.matmul(x, self.W_v)
-      
-    print(Q.min(), Q.max())
-    print(K.min(), K.max())
-      
-    # Compute attention scores
-    if self.config.attn_kernel_fn == 'softmax':
-      attn_scores = F.softmax(torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.config.d_embed), dim=-1)
-    elif self.config.attn_kernel_fn == 'linear':
-      attn_scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.config.d_embed)
-    elif self.config.attn_kernel_fn == 'rbf':
-      attn_scores = torch.cdist(Q, K, p=2).pow(2).mul(-self.gamma).exp()
-    elif self.config.attn_kernel_fn == 'laplacian':
-      attn_scores = torch.cdist(Q, K, p=1).mul(-self.gamma).exp()
+      Q = self.W_q(x).view(B, S, self.config.n_head, self.config.d_embed).transpose(1, 2)
+      K = self.W_k(x).view(B, S, self.config.n_head, self.config.d_embed).transpose(1, 2)
+      V = self.W_v(x).view(B, S, self.config.n_head, self.config.d_embed).transpose(1, 2)
     
-    # Add causal mask (if not NTO)
-    if not self.config.use_nto:
-      mask = torch.tril(torch.ones(S, S, device=device))
-      mask = mask.bool()
-      attn_bias = torch.zeros(S, S, device=device)
-      attn_bias.masked_fill_(mask.logical_not(), float("-inf"))
-      attn_scores = attn_scores + attn_bias
+    attn_output = F.scaled_dot_product_attention(Q, K, V, is_causal=True, dropout=self.config.dropout)
+    attn_output = attn_output.transpose(1, 2).contiguous().view(B, S, self.config.n_head * self.config.d_embed)
     
-    # Generate attention outputs
-    attn_output = torch.matmul(attn_scores, V)
-    attn_output = attn_output.transpose(1, 2).contiguous().view(B, S, -1)
     attn_output = self.W_o(attn_output)
+    attn_output = self.dropout(attn_output)
     
     return attn_output
   

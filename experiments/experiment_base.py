@@ -42,8 +42,7 @@ GPT_CONFIG = Config(
   attn_kernel_fn='softmax',
   
   use_ff=True,
-  use_ppe=False,
-  use_nto=False
+  use_ppe=False
 )
 
 GDM_CONFIG = Config(
@@ -62,8 +61,7 @@ GDM_CONFIG = Config(
   attn_kernel_fn='softmax',
   
   use_ff=True,
-  use_ppe=False,
-  use_nto=False
+  use_ppe=False
 )
   
 def run_experiment(config, seed=0):
