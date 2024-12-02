@@ -65,7 +65,7 @@ def evaluate_model_with_config(config, model_type, max_epoch=None):
   tokenizer = TinyStoriesTokenizer()
   val_dataset = TinyStoriesDataset(tokenizer, 'val', context_size=config.context_size)
   
-  evaluate_model_generation(model, val_dataset, tokenizer)
+  evaluate_model_generation(model, tokenizer, val_dataset)
   
 def evaluate_GPT(config, max_epoch=None):
   evaluate_model_with_config(config, "GPT", max_epoch)
