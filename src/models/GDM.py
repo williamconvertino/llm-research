@@ -25,6 +25,8 @@ class GDBlock(nn.Module):
         nn.Linear(config.d_ff, config.d_embed, bias=False),
         nn.Dropout(config.dropout)
       )
+    
+    self._init_weights()
   
   def _init_weights(self):
     nn.init.constant_(self.A_lr, 0.1)
