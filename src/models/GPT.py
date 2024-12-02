@@ -33,6 +33,8 @@ class Attention(nn.Module):
       nn.init.normal_(self.gamma, std=0.02)
 
   def forward(self, x, e, p):
+    print(x.shape)
+    print(self.W_q.shape)
     if self.use_ppe_attn:
       Q = torch.matmul(p, self.W_q)
       K = torch.matmul(p, self.W_k)
