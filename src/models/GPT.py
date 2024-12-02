@@ -15,7 +15,7 @@ class Attention(nn.Module):
     self.attn_kernel_fn = config.attn_kernel_fn
 
     if self.attn_kernel_fn in ['rbf', 'laplacian']:
-      self.gamma = nn.Parameter(torch.ones(self.n_head))
+      self.gamma = nn.Parameter(torch.ones((1, self.n_head, 1, 1)))
 
     self.W_q = nn.Parameter(torch.Tensor(self.n_head, self.d_embed, self.d_embed))
     self.W_k = nn.Parameter(torch.Tensor(self.n_head, self.d_embed, self.d_embed))
@@ -57,7 +57,7 @@ class Attention(nn.Module):
       attn_scores = torch.cdist(Q, K, p=1).mul(-self.gamma).exp()
     
     attn_output = torch.matmul(attn_scores, V)
-    attn_output = attn_output.view(attn_output.size(0), -1)
+    attn_output = attn_output.transpose(1, 2).contiguous().view(B, S, -1)
     attn_output = self.W_o(attn_output)
     
     return attn_output
