@@ -35,8 +35,7 @@ class Attention(nn.Module):
   def forward(self, x, e, p):
     B, S, E = x.size()
     x = x.unsqueeze(1).repeat(1, self.n_head, 1, 1)
-    print(x.shape)
-    print(self.W_q.shape)
+    
     if self.use_ppe_attn:
       Q = torch.matmul(p, self.W_q)
       K = torch.matmul(p, self.W_k)
@@ -57,6 +56,10 @@ class Attention(nn.Module):
     
     attn_output = torch.matmul(attn_scores, V)
     attn_output = attn_output.view(attn_output.size(0), -1)
+    
+    print(attn_output.shape)
+    print(self.W_o.weight.shape)
+    
     attn_output = self.W_o(attn_output)
     
     return attn_output
