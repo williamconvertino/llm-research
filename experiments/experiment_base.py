@@ -24,7 +24,7 @@ from src.training import train_model
 from src.datasets import TinyStoriesDataset
 from src.tokenizers import TinyStoriesTokenizer
 
-DEFAULT_VOCAB_SIZE = 10001
+DEFAULT_VOCAB_SIZE = 10002
   
 GPT_CONFIG = Config(
   d_embed=512,
@@ -60,9 +60,8 @@ def train_model_with_config(config, model_type, seed=0):
     model = GDM(config)
   else:
     raise ValueError("Invalid model type")
-  
+
   tokenizer = TinyStoriesTokenizer()
-  print(len(tokenizer))
   train_dataset = TinyStoriesDataset(tokenizer, 'train', context_size=config.context_size)
   val_dataset = TinyStoriesDataset(tokenizer, 'val', context_size=config.context_size)
   
