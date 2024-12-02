@@ -155,14 +155,15 @@ class GPT(nn.Module):
     return self.lm_head(x)
 
   def train_forward(self, x):
+    device = x.device
     if self.next_target_only:
-      inputs = x[:, :-1]
-      targets = x[:, [-1]]
+      inputs = x[:, :-1].to(device)
+      targets = x[:, [-1]].to(device)
       logits = self(inputs)
       logits = logits[:, [-1], :]
     else:
-      inputs = x[:, :-1]
-      targets = x[:, 1:]
+      inputs = x[:, :-1].to(device)
+      targets = x[:, 1:].to(device)
       logits = self(inputs)
 
     loss = F.cross_entropy(logits.view(-1, self.vocab_size), targets.view(-1))    
