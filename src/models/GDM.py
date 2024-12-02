@@ -56,9 +56,7 @@ class GDM(nn.Module):
     assert config.n_layer < 2 or config.next_target_only, 'GDM does not support n_layer > 1 without next_target_only'
 
     self.name = f'GDM_(d_embed={config.d_embed})_(n_head={config.n_head})_(n_layer={config.n_layer})'
-    
-    if not config.use_attn:
-      self.name += '_NO_ATTN'
+
     if not config.use_ff:
       self.name += '_NO_FF'
     if config.next_target_only:

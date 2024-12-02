@@ -9,7 +9,6 @@ class Config:
     n_head: int
     d_embed: int
     d_ff: Optional[int] = None # if None defaults to 4 x d_embed
-    use_attn: bool = True
     use_ff: bool = True
     attn_kernel_fn: str = 'softmax'
     dropout: float = 0.1

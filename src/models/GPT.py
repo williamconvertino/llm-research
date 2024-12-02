@@ -65,11 +65,9 @@ class TransformerBlock(nn.Module):
     self.n_head = config.n_head
     self.d_ff = config.d_ff
     self.use_ff = config.use_ff
-    self.use_attn = config.use_attn
-
+    
     # Attention
-    if self.use_attn:
-      self.attn = Attention(config)
+    self.attn = Attention(config)
     
     # Feed Forward
     if self.use_ff:
@@ -87,8 +85,7 @@ class TransformerBlock(nn.Module):
       nn.init.normal_(self.ff[2].weight, std=0.02)
 
   def forward(self, x, e, p):
-    if self.use_attn:
-      x = x + self.attn(x, e, p)	
+    x = x + self.attn(x, e, p)	
     if self.use_ff:
       x = x + self.ff(x)
     return x
@@ -100,8 +97,6 @@ class GPT(nn.Module):
 
     self.name = f'GPT_(d_embed={config.d_embed})_(n_head={config.n_head})_(n_layer={config.n_layer})'
     
-    if not config.use_attn:
-      self.name += '_NO_ATTN'
     if not config.use_ff:
       self.name += '_NO_FF'
     if config.next_target_only:
