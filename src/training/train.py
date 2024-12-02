@@ -89,6 +89,8 @@ def train_model(model, train_dataset, val_dataset, max_epochs=None):
     
     print(f"\nEpoch {epoch} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
     
+    epoch += 1
+    
     os.makedirs(RESULTS_DIR, exist_ok=True)
     os.makedirs(CHECKPOINTS_DIR, exist_ok=True)
     
