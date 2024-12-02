@@ -83,7 +83,7 @@ class GDM(nn.Module):
     
     # Output
     self.ln_out = nn.LayerNorm(config.d_embed, bias=False)
-    self.lm_head = nn.Linear(self.d_embed, self.vocab_size, bias=False)
+    self.lm_head = nn.Linear(config.d_embed, config.vocab_size, bias=False)
     self.W_e.weight = self.lm_head.weight # Weight tying
     
     # Initialize weights
@@ -114,21 +114,21 @@ class GDM(nn.Module):
     K = p[:-1, :] @ W_k
     
     if self.config.attn_kernel_fn == 'softmax':
-      attn_scores = F.softmax(torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_embed), dim=-1)
+      attn_scores = F.softmax(torch.matmul(Q, K.transpose(-2, -1)), dim=-1)
     if self.config.attn_kernel_fn == 'linear':
-      attn_scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_embed)
+      attn_scores = torch.matmul(Q, K.transpose(-2, -1))
 
-    f_k = torch.zeros(B, S + 1, self.d_embed, device=device)
+    f_k = torch.zeros(B, S + 1, self.config.d_embed, device=device)
     
     for gd_block in self.gd_blocks:
-      f_k = gd_block.gd_step(f_k, attn_scores, e, self.W_v, self.W_e.weight)
+      f_k = gd_block.gd_step(f_k, attn_scores, e, self.W_e.weight)
     
     output = self.ln_out(f_k[:, :-1, :])
     
     if targets is None:
       logits = self.lm_head(f_k[:, :-1, :])
       loss = None
-    elif self.next_target_only:
+    elif self.config.use_nto:
       targets = targets[:, -1].contiguous()
       logits = self.lm_head(f_k[:, -1, :])
       loss = F.cross_entropy(logits, targets)
