@@ -38,6 +38,9 @@ class GDBlock(nn.Module):
     v = (e - E_W_e).unsqueeze(1)
     V = v @ W_v
     
+    print(attn_scores.shape)
+    print(V.shape)
+    
     delta_A = (attn_scores @ V) * self.A_lr
     print(delta_A.shape)
     delta_A = delta_A.sum(dim=1)
