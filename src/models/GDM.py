@@ -124,7 +124,7 @@ class GDM(nn.Module):
     p = self.W_p(torch.arange(S + 1, device=device))
     
     Q = p @ self.W_q
-    K = p @ self.W_k
+    K = p[:, :-1] @ self.W_k
     
     if self.attn_kernel_fn == 'softmax':
       attn_scores = F.softmax(torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_embed), dim=-1)
