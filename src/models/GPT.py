@@ -10,7 +10,7 @@ class Attention(nn.Module):
     
     self.config = config
 
-    if self.attn_kernel_fn in ['rbf', 'laplacian']:
+    if self.config.attn_kernel_fn in ['rbf', 'laplacian']:
       self.gamma = nn.Parameter(torch.ones((1, config.n_head, 1, 1)))
 
     if self.config.use_ppe:
