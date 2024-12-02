@@ -1,1 +1,1 @@
-from src.util.time_util import get_time_remaining
+from src.util.time_utils import get_time_remaining

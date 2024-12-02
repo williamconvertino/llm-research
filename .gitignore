@@ -2,8 +2,8 @@
 data/
 models/
 !src/models
-results/
 figures/
+results/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

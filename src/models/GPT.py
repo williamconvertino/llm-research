@@ -1,169 +1,166 @@
-"""
-A (heavily) modified version of karpathy's nanoGPT model (https://github.com/karpathy/nanoGPT)
-"""
 import math
-
 import torch
 from torch import nn
 from torch.nn import functional as F
 
-class CausalAttention(nn.Module):
+class Attention(nn.Module):
 
-    def __init__(self, config):
-        super().__init__()
-        
-        self.n_head = config.n_head
-        self.d_embed = config.d_embed
-        self.d_attn = config.d_attn
-        self.dropout = config.dropout
-        
-        # We don't use d_embed // n_head because we want to keep square matrices (to be consistent with GD transformer theory)
-        self.W_q = nn.Linear(self.d_embed, self.d_attn * self.n_head, bias=config.bias)
-        self.W_k = nn.Linear(self.d_embed, self.d_attn * self.n_head, bias=config.bias)
-        self.W_v = nn.Linear(self.d_embed, self.d_attn * self.n_head, bias=config.bias)
-        self.c_proj = nn.Linear(self.d_attn * self.n_head, self.d_embed, bias=config.bias)
-        
-        # Dropout
-        self.attn_dropout = nn.Dropout(config.dropout)
-        self.resid_dropout = nn.Dropout(config.dropout)
+  def __init__(self, config):
+
+    self.d_embed = config.d_embed
+    self.n_head = config.n_head
+    self.n_layer = config.n_layer
+    self.use_ppe_attn = config.use_ppe_attn
+    self.attn_kernel_fn = config.attn_kernel_fn
+
+    if self.attn_kernel_fn in ['rbf', 'laplacian']:
+      self.gamma = nn.Parameter(torch.ones(self.n_head))
+
+    self.W_q = nn.Parameter(torch.Tensor(self.n_head, self.d_embed, self.d_embed))
+    self.W_k = nn.Parameter(torch.Tensor(self.n_head, self.d_embed, self.d_embed))
+    self.W_v = nn.Parameter(torch.Tensor(self.n_head, self.d_embed, self.d_embed))
+    self.W_o = nn.Linear(self.n_head * self.d_embed, self.d_embed, bias=False)
+
+    self._init_weights()
+
+  def _init_weights(self):
+    nn.init.normal_(self.W_q, std=0.02)
+    nn.init.normal_(self.W_k, std=0.02)
+    nn.init.normal_(self.W_v, std=0.02)
+    nn.init.normal_(self.W_o.weight, std=0.02 / math.sqrt(2 * self.n_layer))
+    if self.attn_kernel_fn in ['rbf', 'laplacian']:
+      nn.init.normal_(self.gamma, std=0.02)
+
+  def forward(self, x, e, p):
+    if self.use_ppe_attn:
+      Q = torch.matmul(p, self.W_q)
+      K = torch.matmul(p, self.W_k)
+      V = torch.matmul(e, self.W_v)
+    else:
+      Q = torch.matmul(x, self.W_q)
+      K = torch.matmul(x, self.W_k)
+      V = torch.matmul(x, self.W_v)
+      
+    if self.attn_kernel_fn == 'softmax':
+      attn_scores = F.softmax(torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_embed), dim=-1)
+    elif self.attn_kernel_fn == 'linear':
+      attn_scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_embed)
+    elif self.attn_kernel_fn == 'rbf':
+      attn_scores = torch.cdist(Q, K, p=2).pow(2).mul(-self.gamma).exp()
+    elif self.attn_kernel_fn == 'laplacian':
+      attn_scores = torch.cdist(Q, K, p=1).mul(-self.gamma).exp()
     
-    def forward(self, x):
-        B, S, _ = x.size()
-        
-        q = self.W_q(x).view(B, S, self.n_head, self.d_attn).transpose(1, 2)
-        k = self.W_k(x).view(B, S, self.n_head, self.d_attn).transpose(1, 2)
-        v = self.W_v(x).view(B, S, self.n_head, self.d_attn).transpose(1, 2)
+    attn_output = torch.matmul(attn_scores, V)
+    attn_output = attn_output.view(attn_output.size(0), -1)
+    attn_output = self.W_o(attn_output)
+    
+    return attn_output
+  
+class TransformerBlock(nn.Module):
 
-        y = torch.nn.functional.scaled_dot_product_attention(q, k, v, is_causal=True, attn_mask=None, dropout_p=self.dropout if self.training else 0)
-        y = y.transpose(1, 2).contiguous().view(B, S, self.d_attn * self.n_head)
-        
-        y = self.c_proj(y)
-        y = self.resid_dropout(y)
+  def __init__(self, config):
+    super().__init__()
 
-        return y
+    self.d_embed = config.d_embed
+    self.n_head = config.n_head
+    self.d_ff = config.d_ff
+    self.use_ff = config.use_ff
+    self.use_attn = config.use_attn
 
-class Block(nn.Module):
+    # Attention
+    if self.use_attn:
+      self.attn = Attention(config)
+    
+    # Feed Forward
+    if self.use_ff:
+      self.ff = nn.Sequential(
+        nn.Linear(self.d_embed, self.d_ff, bias=False),
+        nn.GELU(),
+        nn.Linear(self.d_ff, self.d_embed, bias=False)
+      )
+    
+    self._init_weights()
+    
+  def _init_weights(self):
+    if self.use_ff:
+      nn.init.normal_(self.ff[0].weight, std=0.02)
+      nn.init.normal_(self.ff[2].weight, std=0.02)
 
-    def __init__(self, config):
-        super().__init__()
-        
-        self.use_attn = config.use_attn
-        self.use_ff = config.use_ff
-        
-        if self.use_attn:
-          
-          self.ln_attn = nn.LayerNorm(config.d_embed, bias=config.bias)
-          self.attn = CausalAttention(config)
-        
-        if self.use_ff:
-            self.ln_mlp = nn.LayerNorm(config.d_embed, bias=config.bias)
-            self.mlp = nn.Sequential(
-                nn.Linear(config.d_embed, config.d_ff, bias=config.bias),
-                nn.GELU(),
-                nn.Linear(config.d_ff, config.d_embed, bias=config.bias),
-                nn.Dropout(config.dropout)
-            )
-
-    def forward(self, x):
-        if self.use_attn:
-            x = x + self.attn(self.ln_attn(x))
-        if self.use_ff:
-            x = x + self.mlp(self.ln_mlp(x))
-        return x
+  def forward(self, x, e, p):
+    if self.use_attn:
+      x = x + self.attn(x, e, p)	
+    if self.use_ff:
+      x = x + self.ff(x)
+    return x
 
 class GPT(nn.Module):
 
-    def __init__(self, config):
-        super().__init__()
-        
-        self.config = config
-        self.name = f'DEFAULT_GPT_({config.d_embed}D)_({config.n_layer}L)_({config.n_head}H)_(FF={config.d_ff})_(use_ff={config.use_ff})'
-        
-        # Transformer Components
-        self.wte = nn.Embedding(config.vocab_size, config.d_embed)
-        self.wpe = nn.Embedding(config.context_size, config.d_embed)
-        self.drop = nn.Dropout(config.dropout)
-        self.blocks = nn.ModuleList([Block(config) for _ in range(config.n_layer)])
-        self.ln_f = nn.LayerNorm(config.d_embed, bias=config.bias)
-        
-        # LM Head
-        self.lm_head = nn.Linear(config.d_embed, config.vocab_size, bias=False)
-        self.wte.weight = self.lm_head.weight # Weight tying
+  def __init__(self, config):
+    super().__init__()
 
-        # Weight initialization
-        self.apply(self._init_weights)
-        for pn, p in self.named_parameters():
-            if pn.endswith('c_proj.weight'):
-                torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
-
-        print("number of parameters: %.2fM" % (self.get_num_params()/1e6,))
-
-    def get_num_params(self, non_embedding=True):
-        n_params = sum(p.numel() for p in self.parameters())
-        if non_embedding:
-            n_params -= self.wpe.weight.numel()
-        return n_params
-
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-
-    def forward(self, idx, targets=None):
-        
-        device = idx.device
-        B, S = idx.size()
-        assert S <= self.config.context_size, f"Cannot forward sequence of length {S}, context size is only {self.context_size}"
-        
-        pos = torch.arange(0, S, dtype=torch.long, device=device)
-
-        tok_emb = self.wte(idx) # token embeddings of shape (B, S, d_embed)
-        pos_emb = self.wpe(pos) # position embeddings of shape (S, d_embed)
-
-        x = self.drop(tok_emb + pos_emb)
-        
-        for block in self.blocks:
-            x = block(x)
-        x = self.ln_f(x)
-
-        if targets is not None:
-            x = x[:, -1, :]
-            logits = self.lm_head(x)
-            targets = targets[:, -1]
-            targets = targets.contiguous()
-            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
-        else:
-            logits = self.lm_head(x)
-            loss = None
-
-        return logits, loss
+    self.name = f'GPT_(d_embed={config.d_embed})_(n_head={config.n_head})_(n_layer={config.n_layer})'
     
-    @torch.no_grad()
-    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
-        """
-        Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
-        the sequence max_new_tokens times, feeding the predictions back into the model each time.
-        Most likely you'll want to make sure to be in model.eval() mode of operation for this.
-        """
-        for _ in range(max_new_tokens):
-            # if the sequence context is growing too long we must crop it at context_size
-            idx_cond = idx if idx.size(1) <= self.config.context_size else idx[:, -self.config.context_size:]
-            # forward the model to get the logits for the index in the sequence
-            logits, _ = self(idx_cond)
-            # pluck the logits at the final step and scale by desired temperature
-            logits = logits[:, -1, :] / temperature
-            # optionally crop the logits to only the top k options
-            if top_k is not None:
-                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
-                logits[logits < v[:, [-1]]] = -float('Inf')
-            # apply softmax to convert logits to (normalized) probabilities
-            probs = F.softmax(logits, dim=-1)
-            # sample from the distribution
-            idx_next = torch.multinomial(probs, num_samples=1)
-            # append sampled index to the running sequence and continue
-            idx = torch.cat((idx, idx_next), dim=1)
+    if not config.use_attn:
+      self.name += '_NO_ATTN'
+    if not config.use_ff:
+      self.name += '_NO_FF'
+    if config.next_target_only:
+      self.name += '_NTO'
+    if config.use_ppe_attn:
+      self.name += '_PPE'
+    
+    self.d_embed = config.d_embed
+    self.vocab_size = config.vocab_size
+    self.context_size = config.context_size
+    self.n_head = config.n_head
+    self.n_layer = config.n_layer
+    self.next_target_only = config.next_target_only
 
-        return idx
+    # Embedding
+    self.W_e = nn.Embedding(self.vocab_size, self.d_embed)
+    self.W_p = nn.Embedding(self.context_size, self.d_embed)
+    
+    # Attention Blocks
+    self.attn_blocks = nn.ModuleList([TransformerBlock(config) for _ in range(self.n_layer)])
+
+    # Output
+    self.lm_head = nn.Linear(self.d_embed, self.vocab_size, bias=False)
+    self.W_e.weight = self.lm_head.weight # Weight tying
+    
+    # Initialize weights
+    self._init_weights()
+
+    # Parameter count
+    self.n_param = sum(p.numel() for p in self.parameters()) - sum(p.numel() for p in self.W_e.parameters()) - sum(p.numel() for p in self.W_p.parameters())
+    print(f'Initialized {self.name} with {self.n_param/1e6:.2f}M parameters')
+
+
+  def _init_weights(self):
+    nn.init.normal_(self.W_e.weight, std=0.02)
+    nn.init.normal_(self.W_p.weight, std=0.02)
+
+  def forward(self, x, targets=None):
+    
+    device = x.device
+    B, S = x.size()
+    
+    e = self.W_e(x)
+    p = self.W_p(torch.arange(S, device=device))
+    x = e + p
+
+    for attn_block in self.attn_blocks:
+      x = attn_block(x, e, p)
+
+    if targets is None:
+      logits = self.lm_head(x)
+      loss = None
+    elif self.next_target_only:
+      targets = targets[:, -1].contiguous()
+      logits = self.lm_head(x[:, -1])
+      loss = F.cross_entropy(logits, targets)
+    else:
+      logits = self.lm_head(x)
+      targets = targets.contiguous()
+      loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+      
+    return logits, loss

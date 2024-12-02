@@ -20,7 +20,7 @@ class TinyStoriesDataset(IterableDataset):
   
     self.tokenizer = tokenizer
     self.context_size = context_size
-    self.stride = context_size // 2
+    self.stride = context_size // 2 # Overlap of 1/2 context size
     self.batch_size = batch_size
     self.shuffle_buffer_size = shuffle_buffer_size
     self.file_path = f'{DATASET_DIR}/{DATASET_NAME}/preprocessed/{split}.bin'
