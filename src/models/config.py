@@ -18,6 +18,7 @@ class Config:
     attn_kernel_fn: str = 'softmax'
     use_ff: bool = True
     use_ppe: bool = False
+    use_nto: bool = False
     
     def __post_init__(self):
         assert self.model_type in ['GPT', 'GPT_NTO', 'GDM', 'GDM_NTO']
@@ -28,3 +29,5 @@ class Config:
             self.name += '_FF'
         if self.use_ppe:
             self.name += '_PPE'
+        if self.use_nto:
+            self.name += '_NTO'
