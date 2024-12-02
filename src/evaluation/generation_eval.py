@@ -16,5 +16,4 @@ def evaluate_model_generation(model, tokenizer, val_dataset):
   
   for sequence in (short_test_sequences + long_test_sequences):
     print(f"Input: {sequence}")
-    for i in range(5):
-      print(f"Generated {i+1}: {model.generate(sequence, n=10, tokenizer=tokenizer)}")
+    print(f"Generated: {model.generate(sequence, n=10, tokenizer=tokenizer)}")

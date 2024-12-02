@@ -166,7 +166,7 @@ class GPT(nn.Module):
       
     return logits, loss
 
-  def generate(self, x, n=1, tokenizer=None):
+  def generate(self, x, n=1, tokenizer=None, new_tokens_only=True):
     
     assert not type(x) == str or tokenizer is not None, 'Tokenizer required for string input'
     
@@ -177,6 +177,9 @@ class GPT(nn.Module):
     
     if len(x.shape) == 1:
       x = x.unsqueeze(0)
+      
+    if new_tokens_only:
+      original_length = x.size(1)
     
     for _ in range(n):
       with torch.no_grad():
@@ -184,7 +187,11 @@ class GPT(nn.Module):
         next_token = torch.argmax(logits, dim=-1)
         x = torch.cat([x, next_token[:, -1].unsqueeze(0)], dim=1)
         
+    if new_tokens_only:
+      x = x[:, original_length:]
+        
     x = x.squeeze(0).tolist()
+    
     if tokenizer is not None:
       x = tokenizer.decode(x)
     
