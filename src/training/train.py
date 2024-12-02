@@ -13,7 +13,7 @@ CHECKPOINTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../.
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../results')
 
 def model_forward(model, batch, device):
-  sequence = batch['input_ids'].to(device)
+  sequence = batch.to(device)
   input_ids = sequence[:, :-1]
   target_ids = sequence[:, 1:]
   _, loss = model(input_ids, target_ids)
