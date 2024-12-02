@@ -37,9 +37,9 @@ def beam_search_from_sequence(model, tokenizer, sequence, max_new_tokens=100, nu
 def evaluate_model_generation(model, tokenizer, val_dataset):
   for sequence in short_test_sequences:
     generated_sequence = generate_from_sequence(model, tokenizer, sequence)
-    # beam_search_sequence = beam_search_from_sequence(model, tokenizer, sequence)
+    beam_search_sequence = beam_search_from_sequence(model, tokenizer, sequence)
     print("=" * 30)
     print(f"Sequence: {sequence}")
     print(f"Generated: {sequence} [{generated_sequence}]")
-    # print(f"Beam Search: {sequence} [{beam_search_sequence}]")
+    print(f"Beam Search: {sequence} [{beam_search_sequence}]")
     
