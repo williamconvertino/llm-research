@@ -34,11 +34,8 @@ class GDBlock(nn.Module):
     T = torch.clamp(T, -10, 10) # Prevent overflow
     T = torch.exp(T)
     E_W_e = (T @ W_e) / (T.sum(dim=-1, keepdim=True) + 1e-8) # Add epsilon for numerical stability
-    E_W_e = E_W_e.unsqueeze(0).expand(B, -1, -1)
-
-    print(e.shape)
-    print(E_W_e.shape)
-    print(W_v.shape)
+    
+    print((e - E_W_e).shape)
     
     V = (e - E_W_e) @ W_v
     
