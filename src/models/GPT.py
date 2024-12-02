@@ -166,33 +166,13 @@ class GPT(nn.Module):
       
     return logits, loss
 
-  def generate(self, x, n=1, tokenizer=None, new_tokens_only=True):
+  def generate(self, x, max_new_tokens, eos_token=None):
     
-    assert not type(x) == str or tokenizer is not None, 'Tokenizer required for string input'
-    
-    if type(x) == str:
-      x = tokenizer.encode(x)
-    if type(x) == list:
-      x = torch.tensor(x)
-    
-    if len(x.shape) == 1:
-      x = x.unsqueeze(0)
-      
-    if new_tokens_only:
-      original_length = x.size(1)
-    
-    for _ in range(n):
-      with torch.no_grad():
-        logits, _ = self.forward(x)
-        next_token = torch.argmax(logits, dim=-1)
-        x = torch.cat([x, next_token[:, -1].unsqueeze(0)], dim=1)
-        
-    if new_tokens_only:
-      x = x[:, original_length:]
-        
-    x = x.squeeze(0).tolist()
-    
-    if tokenizer is not None:
-      x = tokenizer.decode(x)
+    for _ in range(max_new_tokens):
+      logits, _ = self(x)
+      idx_next = torch.argmax(logits[:, -1, :], dim=-1).unsqueeze(-1)
+      x = torch.cat((x, idx_next), dim=1)
+      if eos_token is not None and idx_next.item() == eos_token:
+        break
     
     return x
