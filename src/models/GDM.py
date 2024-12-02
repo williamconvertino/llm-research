@@ -42,7 +42,7 @@ class GDBlock(nn.Module):
     delta_A = delta_A.sum(dim=1)
     
     delta_B = (e - E_W_e) * self.B_lr
-    print(delta_B.shape)
+    delta_B = delta_B.sum(dim=1).unsqueeze(1)
     
     delta_f_k = delta_A + delta_B
     delta_f_k = delta_f_k / S
