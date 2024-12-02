@@ -140,7 +140,7 @@ class GPT(nn.Module):
     nn.init.normal_(self.W_e.weight, std=0.02)
     nn.init.normal_(self.W_p.weight, std=0.02)
 
-  def forward(self, x):
+  def forward(self, x, targets=None):
     
     device = x.device
     B, S = x.size()
@@ -152,27 +152,24 @@ class GPT(nn.Module):
     for attn_block in self.attn_blocks:
       x = attn_block(x, e, p)
 
-    return self.lm_head(x)
-
-  def train_forward(self, x):
-    device = x.device
-    if self.next_target_only:
-      inputs = x[:, :-1].to(device)
-      targets = x[:, [-1]].to(device)
-      logits = self(inputs)
-      logits = logits[:, [-1], :]
+    if targets is None:
+      logits = self.lm_head(x)
+      loss = None
+    elif self.next_target_only:
+      targets = targets[:, [-1]].contiguous()
+      logits = self.lm_head(x)[:, [-1],:]
+      loss = F.cross_entropy(logits, targets)
     else:
-      inputs = x[:, :-1].to(device)
-      targets = x[:, 1:].to(device)
-      logits = self(inputs)
-
-    loss = F.cross_entropy(logits.view(-1, self.vocab_size), targets.view(-1))    
+      logits = self.lm_head(x)
+      targets = targets.contiguous()
+      loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+      
     return logits, loss
 
   def generate(self, x, max_new_tokens=100, eos_token=None):
     
     for _ in range(max_new_tokens):
-      logits = self(x)
+      logits, _ = self(x)
       idx_next = torch.argmax(logits[:, -1, :], dim=-1).unsqueeze(-1)
       x = torch.cat((x, idx_next), dim=1)
       if eos_token is not None and idx_next.item() == eos_token:
@@ -196,7 +193,7 @@ class GPT(nn.Module):
                 continue
             
             # Generate beam candidates
-            logits = self(beam['x'])
+            logits, _ = self(beam['x'])
             topk = torch.topk(logits[:, -1, :], num_beams, dim=-1)
             
             for i in range(num_beams):

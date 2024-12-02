@@ -12,12 +12,12 @@ WEIGHT_DECAY = 1e-2
 CHECKPOINTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../checkpoints')
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../results')
 
-# def model_forward(model, batch, device):
-#   sequence = batch['input_ids'].to(device)
-#   input_ids = sequence[:, :-1]
-#   target_ids = sequence[:, 1:]
-#   _, loss = model(input_ids, target_ids)
-#   return loss
+def model_forward(model, batch, device):
+  sequence = batch['input_ids'].to(device)
+  input_ids = sequence[:, :-1]
+  target_ids = sequence[:, 1:]
+  _, loss = model(input_ids, target_ids)
+  return loss
 
 def train_model(model, train_dataset, val_dataset, max_epochs=None):
   
@@ -55,11 +55,10 @@ def train_model(model, train_dataset, val_dataset, max_epochs=None):
     for step, batch in enumerate(train_dataset):
       
       model.train()
-      batch.to(device)
       
       optimizer.zero_grad()
       
-      _, train_loss = model.train_forward(batch)
+      train_loss = model_forward(model, batch, device)
       train_loss.backward()
       optimizer.step()
       
@@ -70,8 +69,7 @@ def train_model(model, train_dataset, val_dataset, max_epochs=None):
         model.eval()
         with torch.no_grad():
           for val_batch in val_dataset:
-            val_batch.to(device)
-            _, batch_val_loss = model.train_forward(val_batch) # Use train forward for consistency with NTO outputs
+            batch_val_loss = model_forward(model, val_batch, device)
             batch_val_loss = batch_val_loss.item()
             total_val_loss += batch_val_loss
         val_loss = total_val_loss / len(val_dataset)
