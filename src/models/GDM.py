@@ -50,14 +50,14 @@ class GDBlock(nn.Module):
     
     delta_f_k = delta_A_x
     
-    if self.use_gd_bias:
+    if self.config.use_gd_bias:
       delta_B = (e - E_W_e) * self.B_lr
       delta_B = delta_B.sum(dim=1).unsqueeze(1)
       delta_f_k = delta_f_k + delta_B
       
     delta_f_k = delta_f_k / S
     
-    if self.use_ff:
+    if self.config.use_ff:
       return self.ff(f_k + delta_f_k)
     
     return f_k + delta_f_k
