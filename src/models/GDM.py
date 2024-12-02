@@ -30,6 +30,7 @@ class GDBlock(nn.Module):
   def gd_step(self, f_k, attn_scores, e, W_v, W_e):
     
     B, S, E = e.shape
+    print(f_k.shape)
     T = f_k[:S, :] @ W_e.transpose(-2, -1)
     T = torch.clamp(T, -10, 10) # Prevent overflow
     T = torch.exp(T)
