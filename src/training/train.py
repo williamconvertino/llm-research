@@ -64,6 +64,8 @@ def train_model(model, train_dataset, val_dataset, max_epochs=None):
       
       train_loss = train_loss.item()
       
+      print("A")
+      
       if step % record_steps == 0 or step == len(train_dataset) - 1:
         total_val_loss = 0.0
         model.eval()
@@ -80,9 +82,15 @@ def train_model(model, train_dataset, val_dataset, max_epochs=None):
         results['val_losses'].append((total_step, val_loss))
         results['train_losses'].append((total_step, train_loss))
       
+      
+      print("B")
+      
       if step <= 1000 or step % 100 == 0 or step == len(train_dataset) - 1:
         time_remaining = get_time_remaining(start_time, step, len(train_dataset))
         print(f"\tEpoch {epoch} | Step {step}/{len(train_dataset)} | Train Loss: {train_loss:.4f} | Most Recent Val Loss: {val_loss:.4f} | Time Remaining: {time_remaining}", end='\r')
+    
+      
+      print("C")
     
     print(f"\nEpoch {epoch} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
     
