@@ -32,7 +32,6 @@ GPT_CONFIG = Config(
   n_head=8,
   context_size=256,
   vocab_size=DEFAULT_VOCAB_SIZE,
-  use_attn=True,
   use_ff=True,
   attn_kernel_fn='softmax',
   dropout=0.1,
