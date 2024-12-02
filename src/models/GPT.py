@@ -21,7 +21,7 @@ class Attention(nn.Module):
     self.W_v = nn.Linear(config.d_embed, config.n_head * config.d_embed, bias=False)
     self.W_o = nn.Linear(config.n_head * config.d_embed, config.d_embed, bias=False)
 
-    self.dropout = nn.Dropout(config.dropout)
+    self.dropout_o = nn.Dropout(config.dropout)
     
     self._init_weights()
 
@@ -47,11 +47,11 @@ class Attention(nn.Module):
       K = self.W_k(x).view(B, S, self.config.n_head, self.config.d_embed).transpose(1, 2)
       V = self.W_v(x).view(B, S, self.config.n_head, self.config.d_embed).transpose(1, 2)
     
-    attn_output = F.scaled_dot_product_attention(Q, K, V, is_causal=True, dropout=self.config.dropout)
+    attn_output = F.scaled_dot_product_attention(Q, K, V, is_causal=True, dropout_p=self.config.dropout)
     attn_output = attn_output.transpose(1, 2).contiguous().view(B, S, self.config.n_head * self.config.d_embed)
     
     attn_output = self.W_o(attn_output)
-    attn_output = self.dropout(attn_output)
+    attn_output = self.dropout_o(attn_output)
     
     return attn_output
   
