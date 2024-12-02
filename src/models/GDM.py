@@ -36,6 +36,7 @@ class GDBlock(nn.Module):
     E_W_e = (T @ W_e) / (T.sum(dim=-1, keepdim=True) + 1e-8) # Add epsilon for numerical stability
     
     print((e - E_W_e).shape)
+    print(W_v.shape)
     
     V = (e - E_W_e) @ W_v
     
