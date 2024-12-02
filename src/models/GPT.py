@@ -189,12 +189,12 @@ class GPT(nn.Module):
           continue
         x = beam['x']
         logits, _ = self(x)
-        topk = torch.topk(logits[:, -1, :], num_beams, dim=-1)
+        topk = torch.topk(logits, num_beams, dim=-1)
         for i in range(num_beams):
+          print(x.shape)
+          print(topk.indices.shape)
           idx_next = topk.indices[0, i].unsqueeze(-1)
           score = topk.values[0, i]
-          print(x.shape)
-          print(idx_next.shape)
           new_x = torch.cat((x, idx_next), dim=1)
           new_eos = eos_token is not None and idx_next.item() == eos_token
           new_sequences.append({'x': new_x, 'score': beam['score'] + score.item(), 'eos': new_eos})
