@@ -87,14 +87,14 @@ class TinyStoriesDataset(IterableDataset):
       if len(batch) == self.batch_size:
         batch_tensor = torch.stack(batch)
         batch = []
-        yield {'input_ids': batch_tensor.long()}
+        yield batch_tensor.long()
     
     while len(buffer) > 0:
       batch.append(torch.tensor(buffer.pop(random.randint(0, len(buffer) - 1))))
       if len(batch) == self.batch_size:
         batch_tensor = torch.stack(batch)
         batch = []
-        yield {'input_ids': batch_tensor.long()}
+        yield batch_tensor.long()
         
     if len(batch) > 0:
-      yield {'input_ids': torch.stack(batch).long()}
+      yield torch.stack(batch).long()

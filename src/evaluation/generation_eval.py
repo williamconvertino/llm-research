@@ -14,7 +14,7 @@ long_test_sequences = [
   "There once was a princess who lived in a big castle. One day, the princess decided to go on an adventure. She packed her bags and left the castle. She walked through the forest and saw a dragon. The dragon was very big and the princess was very scared. The dragon started to chase the princess and the princess ran as fast as she could. The dragon finally caught the princess and ",
 ]
 
-def generate_from_sequence(model, tokenizer, sequence, max_new_tokens=10, return_new_tokens_only=True):
+def generate_from_sequence(model, tokenizer, sequence, max_new_tokens=100, return_new_tokens_only=True):
   model.eval()
   with torch.no_grad():
     tokenized_sequence = torch.tensor(tokenizer(sequence)['input_ids']).unsqueeze(0)
@@ -24,7 +24,7 @@ def generate_from_sequence(model, tokenizer, sequence, max_new_tokens=10, return
       generated_sequence = generated_sequence[len(sequence):]
     return generated_sequence
   
-def beam_search_from_sequence(model, tokenizer, sequence, max_new_tokens=10, num_beams=3, return_new_tokens_only=True):
+def beam_search_from_sequence(model, tokenizer, sequence, max_new_tokens=100, num_beams=3, return_new_tokens_only=True):
   model.eval()
   with torch.no_grad():
     tokenized_sequence = torch.tensor(tokenizer(sequence)['input_ids']).unsqueeze(0)
