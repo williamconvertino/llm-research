@@ -45,8 +45,6 @@ class Attention(nn.Module):
       K = torch.matmul(x, self.W_k)
       V = torch.matmul(x, self.W_v)
     
-    print(Q.shape)
-    
     if self.attn_kernel_fn == 'softmax':
       attn_scores = F.softmax(torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_embed), dim=-1)
     elif self.attn_kernel_fn == 'linear':
