@@ -165,3 +165,24 @@ class GPT(nn.Module):
       loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
       
     return logits, loss
+
+  def generate(self, x, n=1, tokenizer=None):
+    
+    assert not type(x) == str or tokenizer is not None, 'Tokenizer required for string input'
+    
+    if type(x) == str:
+      x = tokenizer.encode(x)
+    if type(x) == list:
+      x = torch.tensor(x)
+    
+    for _ in range(n):
+      with torch.no_grad():
+        logits, _ = self.forward(x)
+        next_token = torch.argmax(logits, dim=-1)
+        x = torch.cat([x, next_token.unsqueeze(0)], dim=1)
+    
+    x = x.squeeze(0).tolist()
+    if tokenizer is not None:
+      x = tokenizer.decode(x)
+    
+    return x
