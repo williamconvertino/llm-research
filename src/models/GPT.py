@@ -104,8 +104,8 @@ class TransformerBlock(nn.Module):
     
   def _init_weights(self):
     if self.config.use_ff:
-      nn.init.normal_(self.ff[0].weight, std=0.02)
-      nn.init.normal_(self.ff[2].weight, std=0.02)
+      nn.init.normal_(self.ff[1].weight, std=0.02)
+      nn.init.normal_(self.ff[3].weight, std=0.02)
 
   def forward(self, x, e, p):
     x = x + self.attn(x, e, p)	
