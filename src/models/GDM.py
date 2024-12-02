@@ -30,7 +30,7 @@ class GDBlock(nn.Module):
   def gd_step(self, f_k, attn_scores, e, W_v, W_e):
     
     B, S, E = e.shape
-    T = f_k[:, :S] @ W_e.transpose(-2, -1)
+    T = f_k[:S, :] @ W_e.transpose(-2, -1)
     T = torch.clamp(T, -10, 10) # Prevent overflow
     T = torch.exp(T)
     E_W_e = (T @ W_e) / (T.sum(dim=-1, keepdim=True) + 1e-8) # Add epsilon for numerical stability
