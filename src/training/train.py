@@ -22,8 +22,8 @@ def model_forward(model, batch, device):
 def train_model(model, train_dataset, val_dataset, max_epochs=None):
   
   # Setup
-  # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-  device = torch.device('cpu')
+  device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+  # device = torch.device('cpu')
   model.to(device)
   
   optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
