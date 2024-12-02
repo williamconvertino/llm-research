@@ -28,8 +28,9 @@ class GDBlock(nn.Module):
       nn.init.normal_(self.ff[2].weight, std=0.02)
   
   def gd_step(self, f_k, attn_scores, e, W_v, W_e):
+    
     B, S, E = e.shape
-    T = f_k[:, :S, :] @ W_e.transpose(-2, -1)
+    T = f_k[:, :S] @ W_e.transpose(-2, -1)
     T = torch.clamp(T, -10, 10) # Prevent overflow
     T = torch.exp(T)
     E_W_e = (T @ W_e) / (T.sum(dim=-1, keepdim=True) + 1e-8) # Add epsilon for numerical stability
@@ -37,7 +38,12 @@ class GDBlock(nn.Module):
     V = (e - E_W_e) @ W_v
     
     delta_A = (attn_scores @ V) * self.A_lr
+    print(delta_A.shape)
+    delta_A = delta_A.sum(dim=1)
+    
     delta_B = (e - E_W_e) * self.B_lr
+    print(delta_B.shape)
+    delta_B = delta_B.sum(dim=2)
     
     delta_f_k = delta_A.sum(dim=1) + delta_B.sum(dim=2)
     delta_f_k = delta_f_k / S
