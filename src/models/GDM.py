@@ -36,6 +36,10 @@ class GDBlock(nn.Module):
     E_W_e = (T @ W_e) / (T.sum(dim=-1, keepdim=True) + 1e-8) # Add epsilon for numerical stability
     E_W_e = E_W_e.unsqueeze(0).expand(B, -1, -1, -1)
 
+    print(e.shape)
+    print(E_W_e.shape)
+    print(W_v.shape)
+    
     V = (e - E_W_e) @ W_v
     
     delta_A = (attn_scores @ V) * self.A_lr
