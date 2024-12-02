@@ -29,7 +29,7 @@ def beam_search_from_sequence(model, tokenizer, sequence, max_new_tokens=100, nu
   with torch.no_grad():
     tokenized_sequence = torch.tensor(tokenizer(sequence)['input_ids']).unsqueeze(0)
     output = model.beam_search(tokenized_sequence, max_new_tokens, num_beams, eos_token = tokenizer.eos_token_id)
-    generated_sequence = tokenizer.decode(output[0]['x'][0].tolist())
+    generated_sequence = tokenizer.decode(output[0].tolist())
     if return_new_tokens_only:
       generated_sequence = generated_sequence[len(sequence):]
     return generated_sequence
