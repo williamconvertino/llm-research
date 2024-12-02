@@ -175,12 +175,15 @@ class GPT(nn.Module):
     if type(x) == list:
       x = torch.tensor(x)
     
+    if len(x.shape) == 1:
+      x = x.unsqueeze(0)
+    
     for _ in range(n):
       with torch.no_grad():
         logits, _ = self.forward(x)
         next_token = torch.argmax(logits, dim=-1)
-        x = torch.cat([x, next_token.unsqueeze(0)], dim=1)
-    
+        x = torch.cat([x, next_token[:, -1].unsqueeze(0)], dim=1)
+        
     x = x.squeeze(0).tolist()
     if tokenizer is not None:
       x = tokenizer.decode(x)
