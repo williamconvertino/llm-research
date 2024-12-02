@@ -78,6 +78,9 @@ def train_model(model, train_dataset, val_dataset, max_epochs=None):
         
         results['val_losses'].append((total_step, val_loss))
         results['train_losses'].append((total_step, train_loss))
+
+        if step == 0:
+          start_time = time.time() # Reset start time to avoid time remaining being skewed by initial validation time
       
       if step <= 1000 or step % 100 == 0 or step == len(train_dataset) - 1:
         time_remaining = get_time_remaining(start_time, step, len(train_dataset))
