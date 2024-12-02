@@ -6,7 +6,8 @@ from torch.nn import functional as F
 class Attention(nn.Module):
 
   def __init__(self, config):
-
+    super().__init__()
+    
     self.d_embed = config.d_embed
     self.n_head = config.n_head
     self.n_layer = config.n_layer
