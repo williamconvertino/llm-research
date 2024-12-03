@@ -22,7 +22,7 @@ class Config:
     use_gd_bias: bool = False
     
     def __post_init__(self):
-        assert self.model_type in ['GPT', 'GDM']
+        assert self.model_type in ['GPT', 'GDM', 'PGD']
         assert self.attn_kernel_fn in ['softmax', 'linear', 'rbf', 'laplacian']
         self.d_ff = self.d_embed * 4
         self.name = f'{self.model_type}_{self.d_embed}D_{self.n_head}H_{self.n_layer}L_K={self.attn_kernel_fn}'
