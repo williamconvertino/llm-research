@@ -21,6 +21,8 @@ class CausalGDM(nn.Module):
     self.wpe = nn.Embedding(config.context_size + 1, config.d_embed) # Need a positional vector for the N+1th token
     self.drop_p = nn.Dropout(config.dropout)
     self.drop_e = nn.Dropout(config.dropout)
+    self.ln_p = nn.LayerNorm(config.d_embed, bias=False)
+    self.ln_e = nn.LayerNorm(config.d_embed, bias=False)
     self.ln_f = nn.LayerNorm(config.d_embed, bias=False)
 
     # Kern
@@ -101,6 +103,9 @@ class CausalGDM(nn.Module):
 
     e = self.drop_e(e)
     p = self.drop_p(p)
+
+    e = self.ln_e(e)
+    p = self.ln_p(p)
 
     # Kernel
     Q = p.repeat(1, 1, self.n_head).view(B, S + 1, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
