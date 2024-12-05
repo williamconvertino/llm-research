@@ -71,7 +71,7 @@ class Block(nn.Module):
     super().__init__()
     
     self.use_ff = config.use_ff
-   
+    
     self.ln_p = nn.LayerNorm(config.d_embed, bias=False)
     self.ln_e = nn.LayerNorm(config.d_embed, bias=False)
     self.attn = GDAttention(config)
