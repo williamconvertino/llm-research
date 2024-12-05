@@ -114,7 +114,7 @@ class CausalGDM(nn.Module):
     Q = Q @ self.W_q
     K = K @ self.W_k
     
-    mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=-1).view(1, S, S)
+    mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=0).view(1, S, S)
     # mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
     mask = mask.bool()
     
