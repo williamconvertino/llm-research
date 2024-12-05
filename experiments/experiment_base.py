@@ -19,7 +19,7 @@ except:
 # Basic experiment setup
 
 import torch
-from src.models import CausalGDM, GPT, GDM, Config
+from src.models import CausalGDM, GPT, GDM, Config, CausalGPT
 from src.training import train_model
 from src.datasets import TinyStoriesDataset
 from src.tokenizers import TinyStoriesTokenizer
@@ -79,6 +79,22 @@ CAUSAL_GDM_CONFIG = Config(
   
   use_ff=False
 )
+
+CAUSAL_GPT_CONFIG = Config(
+  model_type='CausalGPT',
+  
+  context_size=256,
+  vocab_size=DEFAULT_VOCAB_SIZE,
+  
+  d_embed=512,
+  n_layer=1,
+  n_head=8,
+  
+  dropout=0.1,
+  
+  use_ff=False
+)
+
   
 def run_experiment(config, seed=0):
   
@@ -90,6 +106,8 @@ def run_experiment(config, seed=0):
     model = GDM(config)
   elif config.model_type == "CausalGDM":
     model = CausalGDM(config)
+  elif config.model_type == "CausalGPT":
+    model = CausalGPT(config)
   else:
     raise ValueError("Invalid model type")
 

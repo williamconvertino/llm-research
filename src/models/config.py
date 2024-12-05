@@ -20,6 +20,8 @@ class Config:
   use_ppe: bool = False
   use_nto: bool = False
   use_gd_bias: bool = False
+
+  use_skip=True
   
   def __post_init__(self):
     assert self.model_type in ['GPT', 'GDM', 'PGD', 'CausalGDM']
@@ -34,3 +36,5 @@ class Config:
       self.name += '_NTO'
     if self.model_type == 'GDM' and self.use_gd_bias:
       self.name += '_GDB'
+    if not self.use_skip:
+      self.name += '_NS'
