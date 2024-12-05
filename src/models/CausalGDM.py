@@ -56,8 +56,9 @@ class CausalGDM(nn.Module):
     torch.nn.init.normal_(self.wte.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.wpe.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
-    torch.nn.init.normal_(self.mlp[0].weight, mean=0.0, std=0.02)
-    torch.nn.init.normal_(self.mlp[2].weight, mean=0.0, std=0.02)
+    if self.config.use_ff:
+      torch.nn.init.normal_(self.mlp[0].weight, mean=0.0, std=0.02)
+      torch.nn.init.normal_(self.mlp[2].weight, mean=0.0, std=0.02)
   
   def gd_step(self, f_k, e, krn):
     R = torch.softmax(self.wte.weight @ f_k.transpose(1, 2), dim=-1)
