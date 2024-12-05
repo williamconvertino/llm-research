@@ -46,7 +46,8 @@ class GDAttention(nn.Module):
     # y = torch.nn.functional.scaled_dot_product_attention(Q, K, V, attn_mask=mask, dropout_p=self.dropout if self.training else 0)
     attn_scores = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
     # attn_scores = torch.clamp(attn_scores, -10, 10)
-    attn_scores = attn_scores - attn_scores.max(dim=-1, keepdim=True).values
+    # attn_scores = attn_scores - attn_scores.max(dim=-1, keepdim=True).values
+    print(mask)
     attn_scores = attn_scores.masked_fill(mask.logical_not(), float('-inf'))
     attn_scores = F.softmax(attn_scores, dim=-1)
     attn_scores = self.attn_dropout(attn_scores)
