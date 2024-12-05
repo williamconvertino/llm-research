@@ -41,7 +41,7 @@ class GDAttention(nn.Module):
     V = x
 
     # This mask allows for causal attention while incorporating the N+1th query
-    mask = torch.tril(torch.ones(S, S, device=x.device), diagonal=-1).view(1, S, S)
+    mask = torch.tril(torch.ones(S, S, device=x.device), diagonal=0).view(1, S, S)
     # mask = torch.cat([mask, torch.ones(1, 1, S, device=x.device)], dim=1)
     mask = mask.bool()
     
