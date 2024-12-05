@@ -27,6 +27,10 @@ class CausalGDM(nn.Module):
     self.W_q = nn.Parameter(torch.zeros(self.n_head, self.d_embed, self.d_embed))
     self.W_k = nn.Parameter(torch.zeros(self.n_head, self.d_embed, self.d_embed))
 
+    # Dropout
+    self.attn_dropout = nn.Dropout(config.dropout)
+    self.resid_dropout = nn.Dropout(config.dropout)
+
     # GD Step
     self.W_o = nn.Linear(self.d_embed * self.n_head, self.d_embed, bias=False)
     W_N = torch.diag_embed(torch.tensor([1.0 / (i + 1) for i in range(config.context_size)])).unsqueeze(0).unsqueeze(0)
@@ -81,6 +85,7 @@ class CausalGDM(nn.Module):
     delta_f_k = self.W_N[:, :, :S, :S] @ delta_f_k
     delta_f_k = delta_f_k.transpose(1, 2).contiguous().view(B, S, self.d_embed * self.n_head)
     delta_f_k = self.W_o(delta_f_k)
+    delta_f_k = self.resid_dropout(delta_f_k)
     
     return delta_f_k
 
@@ -108,11 +113,13 @@ class CausalGDM(nn.Module):
     mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
     mask = mask.bool()
     
-    attn_scores = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
-    attn_scores = torch.clamp(attn_scores, -10, 10)
-    attn_scores = attn_scores.masked_fill(mask.logical_not(), float('-inf'))
-    attn_scores = attn_scores[:, :, 1:, :]
-    krn = F.softmax(attn_scores, dim=-1)
+    krn = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
+    krn = torch.clamp(krn, -10, 10)
+    krn = krn.masked_fill(mask.logical_not(), float('-inf'))
+    krn = krn[:, :, 1:, :]
+    krn = F.softmax(krn, dim=-1)
+    
+    krn = self.attn_dropout(krn)
     
     f_k = torch.zeros_like(e, device=device)
 
