@@ -69,7 +69,9 @@ class CausalGDM(nn.Module):
     V = (e - ex_wte).unsqueeze(1)
 
     delta_f_k = krn @ V
-    delta_f_k = delta_f_k @ self.W_N
+    print(self.delta_f_k.shape)
+    print(self.W_N.shape)
+    delta_f_k = self.W_N @ delta_f_k
     delta_f_k = self.W_o(delta_f_k)
     
     return delta_f_k
