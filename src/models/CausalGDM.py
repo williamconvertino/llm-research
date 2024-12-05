@@ -26,8 +26,10 @@ class CausalGDM(nn.Module):
     self.ln_f = nn.LayerNorm(config.d_embed, bias=False)
 
     # Kern
-    self.W_q = nn.Parameter(torch.zeros(self.n_head, self.d_embed, self.d_embed))
-    self.W_k = nn.Parameter(torch.zeros(self.n_head, self.d_embed, self.d_embed))
+    # self.W_q = nn.Parameter(torch.zeros(self.n_head, self.d_embed, self.d_embed))
+    # self.W_k = nn.Parameter(torch.zeros(self.n_head, self.d_embed, self.d_embed))
+    self.W_q_diag = nn.Parameter(torch.zeros(self.n_head, self.d_embed))
+    self.W_k_diag = nn.Parameter(torch.zeros(self.n_head, self.d_embed))
 
     # Dropout
     self.attn_dropout = nn.Dropout(config.dropout)
@@ -68,9 +70,13 @@ class CausalGDM(nn.Module):
     torch.nn.init.normal_(self.wte.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.wpe.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
-    torch.nn.init.normal_(self.W_q, mean=0.0, std=0.02)
-    torch.nn.init.normal_(self.W_k, mean=0.0, std=0.02)
+    # torch.nn.init.normal_(self.W_q, mean=0.0, std=0.02)
+    # torch.nn.init.normal_(self.W_k, mean=0.0, std=0.02)
     # torch.nn.init.normal_(self.W_v, mean=0.0, std=0.02)
+    
+    torch.nn.init.normal_(self.W_q_diag, mean=0.0, std=0.02)
+    torch.nn.init.normal_(self.W_k_diag, mean=0.0, std=0.02)
+    
     if self.config.use_ff:
       torch.nn.init.normal_(self.mlp[0].weight, mean=0.0, std=0.02)
       torch.nn.init.normal_(self.mlp[2].weight, mean=0.0, std=0.02)
@@ -111,8 +117,11 @@ class CausalGDM(nn.Module):
     Q = p[:, 1:, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
     K = p[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
     
-    Q = Q @ self.W_q
-    K = K @ self.W_k
+    W_q = torch.diag_embed(self.W_q_diag)
+    W_k = torch.diag_embed(self.W_k_diag)
+    
+    Q = Q @ W_q
+    K = K @ W_k
     
     mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=0).view(1, S, S)
     # mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
