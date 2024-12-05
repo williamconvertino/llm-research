@@ -66,7 +66,7 @@ class CausalGDM(nn.Module):
     ex_wte = R.transpose(-1, -2) @ self.wte.weight
     print(ex_wte.shape)
     print(R.sum(dim=1).shape)
-    ex_wte = (ex_wte / R.sum(dim=1)).transpose(1, 2)
+    ex_wte = ex_wte / R.sum(dim=1).unsqueeze(-1)
 
     V = e - ex_wte
 
