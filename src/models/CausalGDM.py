@@ -108,20 +108,20 @@ class CausalGDM(nn.Module):
     p = self.ln_p(p)
 
     # Kernel
-    Q = p.repeat(1, 1, self.n_head).view(B, S + 1, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
+    Q = p[:, 1:, :].repeat(1, 1, self.n_head).view(B, S + 1, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
     K = p[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
     
     Q = Q @ self.W_q
     K = K @ self.W_k
     
     mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=-1).view(1, S, S)
-    mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
+    # mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
     mask = mask.bool()
     
     krn = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
     krn = torch.clamp(krn, -10, 10)
     krn = krn.masked_fill(mask.logical_not(), float('-inf'))
-    krn = krn[:, :, 1:, :]
+    # krn = krn[:, :, 1:, :]
     krn = F.softmax(krn, dim=-1)
     
     krn = self.attn_dropout(krn)
