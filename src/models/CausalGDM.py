@@ -23,10 +23,16 @@ class CausalGDM(nn.Module):
     self.drop_e = nn.Dropout(config.dropout)
     self.ln_f = nn.LayerNorm(config.d_embed, bias=False)
 
+    # Kern
+    self.W_q = nn.Parameter(torch.zeros(self.n_head, self.d_embed, self.d_embed))
+    self.W_k = nn.Parameter(torch.zeros(self.n_head, self.d_embed, self.d_embed))
+
     # GD Step
     self.W_o = nn.Linear(self.d_embed * self.n_head, self.d_embed, bias=False)
     W_N = torch.diag_embed(torch.tensor([1.0 / (i + 1) for i in range(config.context_size)])).unsqueeze(0).unsqueeze(0)
     self.register_buffer('W_N', W_N)
+
+    # self.W_v = nn.Parameter(torch.zeros(self.n_head, self.d_embed, self.d_embed))
 
     # FF
     if self.config.use_ff or self.config.end_ff:
@@ -56,6 +62,9 @@ class CausalGDM(nn.Module):
     torch.nn.init.normal_(self.wte.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.wpe.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
+    torch.nn.init.normal_(self.W_q, mean=0.0, std=0.02)
+    torch.nn.init.normal_(self.W_k, mean=0.0, std=0.02)
+    # torch.nn.init.normal_(self.W_v, mean=0.0, std=0.02)
     if self.config.use_ff:
       torch.nn.init.normal_(self.mlp[0].weight, mean=0.0, std=0.02)
       torch.nn.init.normal_(self.mlp[2].weight, mean=0.0, std=0.02)
@@ -91,6 +100,9 @@ class CausalGDM(nn.Module):
     # Kernel
     Q = p.repeat(1, 1, self.n_head).view(B, S + 1, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
     K = p[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
+    
+    Q = Q @ self.W_q
+    K = K @ self.W_k
     
     mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=-1).view(1, S, S)
     mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
