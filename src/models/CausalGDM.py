@@ -108,7 +108,7 @@ class CausalGDM(nn.Module):
     p = self.ln_p(p)
 
     # Kernel
-    Q = p[:, 1:, :].repeat(1, 1, self.n_head).view(B, S + 1, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
+    Q = p[:, 1:, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
     K = p[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
     
     Q = Q @ self.W_q
