@@ -29,7 +29,7 @@ class CausalGDM(nn.Module):
     self.register_buffer('W_N', W_N)
 
     # FF
-    if self.config.use_ff:
+    if self.config.use_ff or self.config.end_ff:
       self.ln_mlp = nn.LayerNorm(config.d_embed, bias=False)
       self.mlp = nn.Sequential(
         nn.Linear(config.d_embed, config.d_ff, bias=False),
@@ -108,6 +108,11 @@ class CausalGDM(nn.Module):
       f_k = f_k + self.gd_step(f_k, e, krn)
       if self.config.use_ff:
         f_k = f_k + self.mlp(self.ln_mlp(f_k))
+    
+    if self.config.end_ff and self.config.use_skip:
+      f_k = f_k + self.mlp(self.ln_mlp(f_k))
+    elif self.config.end_ff:
+      f_k = self.mlp(self.ln_mlp(f_k))
     
     x = self.ln_f(f_k)
 

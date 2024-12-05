@@ -17,11 +17,12 @@ class Config:
   
   attn_kernel_fn: str = 'softmax'
   use_ff: bool = True
+  end_ff: bool = False
   use_ppe: bool = False
   use_nto: bool = False
   use_gd_bias: bool = False
 
-  use_skip=True
+  use_skip=False
   
   def __post_init__(self):
     assert self.model_type in ['GPT', 'GDM', 'PGD', 'CausalGDM', 'CausalGPT']
@@ -38,3 +39,7 @@ class Config:
       self.name += '_GDB'
     if not self.use_skip:
       self.name += '_NS'
+    if self.end_ff:
+      self.name += '_EFF'
+    if self.model_type == 'CausalGDM' and self.use_skip:
+      self.name += '_SKIP'
