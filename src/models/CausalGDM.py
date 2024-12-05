@@ -63,6 +63,8 @@ class CausalGDM(nn.Module):
   def gd_step(self, f_k, e, krn):
     R = torch.softmax(self.wte.weight @ f_k.transpose(1, 2), dim=-1)
     ex_wte = R.transpose(-1, -2) @ self.wte.weight
+    print(ex_wte.shape)
+    print(R.shape)
     ex_wte = ex_wte.sum(dim=1) / R.sum(dim=0)
 
     V = e - ex_wte
