@@ -24,7 +24,7 @@ class Config:
   use_skip=True
   
   def __post_init__(self):
-    assert self.model_type in ['GPT', 'GDM', 'PGD', 'CausalGDM']
+    assert self.model_type in ['GPT', 'GDM', 'PGD', 'CausalGDM', 'CausalGPT']
     assert self.attn_kernel_fn in ['softmax', 'linear', 'rbf', 'laplacian']
     self.d_ff = self.d_embed * 4
     self.name = f'{self.model_type}_{self.d_embed}D_{self.n_head}H_{self.n_layer}L_K={self.attn_kernel_fn}'
