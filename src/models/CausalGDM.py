@@ -9,12 +9,13 @@ class GDAttention(nn.Module):
   def __init__(self, config):
     super().__init__()
     
+    self.config = config
     self.n_head = config.n_head
     self.d_embed = config.d_embed
     self.dropout = config.dropout
     
     # Dont need W_q, W_k, or W_v matrices
-    self.c_proj = nn.Linear(self.d_embed * self.n_head, self.d_embed, bias=False)
+    self.W_o = nn.Linear(self.d_embed * self.n_head, self.d_embed, bias=False)
     
     W_N = torch.diag_embed(torch.tensor([1.0 / (i + 1) for i in range(config.context_size)])).unsqueeze(0).unsqueeze(0)
     self.register_buffer('W_N', W_N)
@@ -24,6 +25,11 @@ class GDAttention(nn.Module):
     # Dropout
     self.attn_dropout = nn.Dropout(config.dropout)
     self.resid_dropout = nn.Dropout(config.dropout)
+  
+    self._init_weights()
+    
+  def _init_weights(self):
+    torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
   
   def forward(self, e, p):
     B, S, _ = e.size()
@@ -43,7 +49,7 @@ class GDAttention(nn.Module):
     y = y.transpose(1, 2).contiguous().view(B, S, self.d_embed * self.n_head)
     
       # Use the outputs associated with the N+1th token, rather than Nth
-    y = self.c_proj(y)
+    y = self.W_o(y)
     y = self.resid_dropout(y)
     
     return y
@@ -68,6 +74,10 @@ class Block(nn.Module):
         nn.Dropout(config.dropout)
       )
 
+  def _init_weights(self):
+    torch.nn.init.normal_(self.mlp[0].weight, mean=0.0, std=0.02)
+    torch.nn.init.normal_(self.mlp[2].weight, mean=0.0, std=0.02)
+  
   def forward(self, e, p):
     e = self.ln_e(e)
     p = self.ln_p(p)
@@ -97,26 +107,33 @@ class CausalGDM(nn.Module):
     self.wte.weight = self.lm_head.weight # Weight tying
 
     # Weight initialization
-    self.apply(self._init_weights)
-    for pn, p in self.named_parameters():
-      if pn.endswith('c_proj.weight'):
-        torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
+    # self.apply(self._init_weights)
+    # for pn, p in self.named_parameters():
+    #   if pn.endswith('c_proj.weight'):
+    #     torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
 
     print("number of parameters: %.2fM" % (self.get_num_params()/1e6,))
-
+    self._init_weights()
+  
   def get_num_params(self, non_embedding=True):
     n_params = sum(p.numel() for p in self.parameters())
     if non_embedding:
       n_params -= self.wpe.weight.numel()
     return n_params
 
-  def _init_weights(self, module):
-    if isinstance(module, nn.Linear):
-      torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-      if module.bias is not None:
-        torch.nn.init.zeros_(module.bias)
-    elif isinstance(module, nn.Embedding):
-      torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+  def _init_weights(self):
+    torch.nn.init.normal_(self.lm_head.weight, mean=0.0, std=0.02)
+    torch.nn.init.normal_(self.wte.weight, mean=0.0, std=0.02)
+    torch.nn.init.normal_(self.wpe.weight, mean=0.0, std=0.02)
+  
+
+  # def _init_weights(self, module):
+  #   if isinstance(module, nn.Linear):
+  #     torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+  #     if module.bias is not None:
+  #       torch.nn.init.zeros_(module.bias)
+  #   elif isinstance(module, nn.Embedding):
+  #     torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
   def forward(self, idx, targets=None):
     
