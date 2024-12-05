@@ -11,6 +11,11 @@ class CausalGDM(nn.Module):
     self.config = config
     self.name = config.name
 
+    self.d_embed = config.d_embed
+    self.n_layer = config.n_layer
+    self.n_head = config.n_head
+    self.d_ff = config.d_ff
+
     # Transformer Components
     self.wte = nn.Embedding(config.vocab_size, config.d_embed)
     self.wpe = nn.Embedding(config.context_size + 1, config.d_embed) # Need a positional vector for the N+1th token
