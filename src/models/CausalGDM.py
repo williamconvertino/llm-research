@@ -101,7 +101,7 @@ class CausalGDM(nn.Module):
     
     f_k = torch.zeros_like(e, device=device)
 
-    for _ in self.config.n_layer:
+    for _ in range(self.config.n_layer):
       f_k = f_k + self.gd_step(f_k, e, krn)
       if self.config.use_ff:
         f_k = f_k + self.mlp(self.ln_mlp(f_k))
