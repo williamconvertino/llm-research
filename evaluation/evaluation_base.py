@@ -19,7 +19,8 @@ except:
 # Basic experiment setup
 
 import torch
-from src.models import GPT, GDM, Config
+from src.models import CausalGDM, GPT, GDM, Config, CausalGDM
+from src.training import train_model
 from src.datasets import TinyStoriesDataset
 from src.tokenizers import TinyStoriesTokenizer
 from src.util import load_mrm
@@ -28,35 +29,67 @@ from src.evaluation import evaluate_model_generation
 DEFAULT_VOCAB_SIZE = 10002
   
 GPT_CONFIG = Config(
+  
+  model_type='GPT',
+  
+  context_size=256,
+  vocab_size=DEFAULT_VOCAB_SIZE,
+  
   d_embed=512,
   n_layer=1,
   n_head=8,
-  context_size=256,
-  vocab_size=DEFAULT_VOCAB_SIZE,
-  use_ff=True,
-  attn_kernel_fn='softmax',
+  
   dropout=0.1,
-  next_target_only=False,
-  use_ppe_attn=False
+  
+  attn_kernel_fn='softmax',
+  
+  use_ff=True,
+  use_ppe=False
 )
 
 GDM_CONFIG = Config(
+  
+  model_type='GDM',
+  
+  context_size=256,
+  vocab_size=DEFAULT_VOCAB_SIZE,
+  
   d_embed=512,
   n_layer=1,
   n_head=8,
+  
+  dropout=0.1,
+  
+  attn_kernel_fn='softmax',
+  
+  use_ff=False,
+  use_ppe=False,
+  use_nto=True
+)
+
+CAUSAL_GDM_CONFIG = Config(
+  model_type='CausalGDM',
+  
   context_size=256,
   vocab_size=DEFAULT_VOCAB_SIZE,
-  use_ff=False,
-  attn_kernel_fn='softmax',
-  next_target_only=False
+  
+  d_embed=512,
+  n_layer=1,
+  n_head=8,
+  
+  dropout=0.1,
+  
+  use_ff=False
 )
   
-def evaluate_model_with_config(config, model_type, max_epoch=None):
+def evaluate_model_with_config(config, max_epoch=None):
   
-  if model_type == "GPT":
+  if config.model_type == "GPT":
     model = GPT(config)
-  elif model_type == "GDM":
+  elif config.model_type == "GDM":
     model = GDM(config)
+  elif config.model_type == "CausalGDM":
+    model = CausalGDM(config)
   else:
     raise ValueError("Invalid model type")
 
@@ -67,8 +100,3 @@ def evaluate_model_with_config(config, model_type, max_epoch=None):
   
   evaluate_model_generation(model, tokenizer, val_dataset)
   
-def evaluate_GPT(config, max_epoch=None):
-  evaluate_model_with_config(config, "GPT", max_epoch)
-  
-def evaluate_GDM(config, max_epoch=None):
-  evaluate_model_with_config(config, "GDM", max_epoch)
