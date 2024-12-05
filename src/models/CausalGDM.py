@@ -70,6 +70,7 @@ class CausalGDM(nn.Module):
 
     delta_f_k = krn @ V
     delta_f_k = self.W_N[:, :, :S, :S] @ delta_f_k
+    delta_f_k = delta_f_k.transpose(1, 2).contiguous().view(B, S, self.d_embed * self.n_head)
     delta_f_k = self.W_o(delta_f_k)
     
     return delta_f_k
