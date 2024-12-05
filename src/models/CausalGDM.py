@@ -1,101 +1,7 @@
 import math
-
 import torch
 from torch import nn
 from torch.nn import functional as F
-
-class GDAttention(nn.Module):
-
-  def __init__(self, config):
-    super().__init__()
-    
-    self.config = config
-    self.n_head = config.n_head
-    self.d_embed = config.d_embed
-    self.dropout = config.dropout
-    
-    # Dont need W_q, W_k, or W_v matrices
-    self.W_o = nn.Linear(self.d_embed * self.n_head, self.d_embed, bias=False)
-    
-    W_N = torch.diag_embed(torch.tensor([1.0 / (i + 1) for i in range(config.context_size)])).unsqueeze(0).unsqueeze(0)
-    self.register_buffer('W_N', W_N)
-    
-    # self.W_LR = nn.Parameter(torch.randn(1, self.n_head, config.context_size, 1)) 
-    
-    # Dropout
-    self.attn_dropout = nn.Dropout(config.dropout)
-    self.resid_dropout = nn.Dropout(config.dropout)
-  
-    self._init_weights()
-    
-  def _init_weights(self):
-    torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
-  
-  def forward(self, e, p):
-    B, S, _ = e.size()
-
-    Q = p.repeat(1, 1, self.n_head).view(B, S + 1, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
-    K = p[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
-    V = e.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
-
-    # This mask allows for causal attention while incorporating the N+1th query
-    mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=-1).view(1, S, S)
-    mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
-    mask = mask.bool()
-    
-    # y = torch.nn.functional.scaled_dot_product_attention(Q, K, V, attn_mask=mask, dropout_p=self.dropout if self.training else 0)
-    attn_scores = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
-    attn_scores = torch.clamp(attn_scores, -10, 10)
-    # attn_scores = attn_scores - attn_scores.max(dim=-1, keepdim=True).values
-    # print(mask)
-    attn_scores = attn_scores.masked_fill(mask.logical_not(), float('-inf'))
-    attn_scores = attn_scores[:, :, 1:, :]
-    attn_scores = F.softmax(attn_scores, dim=-1)
-    attn_scores = self.attn_dropout(attn_scores)
-    y = attn_scores @ V
-    
-    
-    # y = y[:, :, 1:, :]
-    y = self.W_N[:, :, :S, :S] @ y
-    y = y.transpose(1, 2).contiguous().view(B, S, self.d_embed * self.n_head)
-    
-      # Use the outputs associated with the N+1th token, rather than Nth
-    y = self.W_o(y)
-    y = self.resid_dropout(y)
-    
-    return y
-
-class Block(nn.Module):
-
-  def __init__(self, config):
-    super().__init__()
-    
-    self.use_ff = config.use_ff
-   
-    self.ln_p = nn.LayerNorm(config.d_embed, bias=False)
-    self.ln_e = nn.LayerNorm(config.d_embed, bias=False)
-    self.attn = GDAttention(config)
-    
-    if self.use_ff:
-      self.ln_mlp = nn.LayerNorm(config.d_embed, bias=False)
-      self.mlp = nn.Sequential(
-        nn.Linear(config.d_embed, config.d_ff, bias=False),
-        nn.GELU(),
-        nn.Linear(config.d_ff, config.d_embed, bias=False),
-        nn.Dropout(config.dropout)
-      )
-
-  def _init_weights(self):
-    torch.nn.init.normal_(self.mlp[0].weight, mean=0.0, std=0.02)
-    torch.nn.init.normal_(self.mlp[2].weight, mean=0.0, std=0.02)
-  
-  def forward(self, e, p):
-    e = self.ln_e(e)
-    p = self.ln_p(p)
-    x = self.attn(e, p)
-    if self.use_ff:
-      x = x + self.mlp(self.ln_mlp(x))
-    return x
 
 class CausalGDM(nn.Module):
 
@@ -110,18 +16,26 @@ class CausalGDM(nn.Module):
     self.wpe = nn.Embedding(config.context_size + 1, config.d_embed) # Need a positional vector for the N+1th token
     self.drop_p = nn.Dropout(config.dropout)
     self.drop_e = nn.Dropout(config.dropout)
-    self.blocks = nn.ModuleList([Block(config) for _ in range(config.n_layer)])
     self.ln_f = nn.LayerNorm(config.d_embed, bias=False)
+
+    # GD Step
+    self.W_o = nn.Linear(self.d_embed * self.n_head, self.d_embed, bias=False)
+    W_N = torch.diag_embed(torch.tensor([1.0 / (i + 1) for i in range(config.context_size)])).unsqueeze(0).unsqueeze(0)
+    self.register_buffer('W_N', W_N)
+
+    # FF
+    if self.config.use_ff:
+      self.ln_mlp = nn.LayerNorm(config.d_embed, bias=False)
+      self.mlp = nn.Sequential(
+        nn.Linear(config.d_embed, config.d_ff, bias=False),
+        nn.GELU(),
+        nn.Linear(config.d_ff, config.d_embed, bias=False),
+        nn.Dropout(config.dropout)
+      )
     
     # LM Head
     self.lm_head = nn.Linear(config.d_embed, config.vocab_size, bias=False)
     self.wte.weight = self.lm_head.weight # Weight tying
-
-    # Weight initialization
-    # self.apply(self._init_weights)
-    # for pn, p in self.named_parameters():
-    #   if pn.endswith('c_proj.weight'):
-    #     torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
 
     print("number of parameters: %.2fM" % (self.get_num_params()/1e6,))
     self._init_weights()
@@ -136,33 +50,57 @@ class CausalGDM(nn.Module):
     torch.nn.init.normal_(self.lm_head.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.wte.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.wpe.weight, mean=0.0, std=0.02)
+    torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
+    torch.nn.init.normal_(self.mlp[0].weight, mean=0.0, std=0.02)
+    torch.nn.init.normal_(self.mlp[2].weight, mean=0.0, std=0.02)
   
-
-  # def _init_weights(self, module):
-  #   if isinstance(module, nn.Linear):
-  #     torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-  #     if module.bias is not None:
-  #       torch.nn.init.zeros_(module.bias)
-  #   elif isinstance(module, nn.Embedding):
-  #     torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
-
-  def forward(self, idx, targets=None):
+  def gd_step(self, f_k, e, krn):
+    R = torch.softmax(self.wte.weight @ f_k.transpose(1, 2), dim=-1)
+    ex_wte = (R.transpose(1, 2) @ self.wte.weight).sum(dim=1) / R.sum(dim=1)
     
-    device = idx.device
-    B, S = idx.size()
-    assert S <= self.config.context_size, f"Cannot forward sequence of length {S}, context size is only {self.context_size}"
+    V = e - ex_wte
+
+    delta_f_k = V @ krn
+    delta_f_k = delta_f_k @ self.W_N
+    delta_f_k = self.W_o(delta_f_k)
     
+    return delta_f_k
+
+  def forward(self, x, targets=None):
+    
+    device = x.device
+    B, S = x.size()
+
     pos = torch.arange(0, S + 1, dtype=torch.long, device=device)
 
-    e = self.wte(idx) # token embeddings of shape (B, S, d_embed)
+    e = self.wte(x) # token embeddings of shape (B, S, d_embed)
     p = self.wpe(pos).repeat(B, 1, 1) # position embeddings of shape (B, S + 1, d_embed)
 
     e = self.drop_e(e)
     p = self.drop_p(p)
-      
-    for block in self.blocks:
-      x = block(e, p)
-    x = self.ln_f(x)
+
+    # Kernel
+    Q = p.repeat(1, 1, self.n_head).view(B, S + 1, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
+    K = p[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
+    
+    mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=-1).view(1, S, S)
+    mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
+    mask = mask.bool()
+    
+    attn_scores = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
+    attn_scores = torch.clamp(attn_scores, -10, 10)
+    attn_scores = attn_scores.masked_fill(mask.logical_not(), float('-inf'))
+    attn_scores = attn_scores[:, :, 1:, :]
+    krn = F.softmax(attn_scores, dim=-1)
+    
+    f_k = torch.zeros_like(e, device=device)
+
+    for _ in self.config.n_layer:
+      f_k = f_k + self.gd_step(f_k, e, krn)
+      if self.config.use_ff:
+        f_k = f_k + self.mlp(self.ln_mlp(f_k))
+    
+    x = self.ln_f(f_k)
 
     if targets is not None:
       # if we are given some desired targets also calculate the loss
@@ -175,7 +113,6 @@ class CausalGDM(nn.Module):
       loss = None
 
     return logits, loss
-  
   
   def generate(self, x, max_new_tokens=100, eos_token=None):
     
