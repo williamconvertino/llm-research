@@ -52,10 +52,10 @@ class GDAttention(nn.Module):
     krn = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
     krn = torch.clamp(krn, -10, 10)
 
-    attn_scores = attn_scores.masked_fill(mask.logical_not(), float('-inf'))
-    # attn_scores = F.softmax(attn_scores, dim=-1)
-    attn_scores = self.attn_dropout(attn_scores)
-    y = attn_scores @ V
+    krn = krn.masked_fill(mask.logical_not(), float('-inf'))
+    # krn = F.softmax(krn, dim=-1)
+    krn = self.attn_dropout(krn)
+    y = krn @ V
     
     y = y.transpose(1, 2).contiguous().view(B, S, self.d_embed * self.n_head)
     
