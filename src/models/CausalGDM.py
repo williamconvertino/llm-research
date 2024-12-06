@@ -128,8 +128,9 @@ class CausalGDM(nn.Module):
     mask = mask.bool()
     
     krn = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
-    krn = torch.clamp(krn, -10, 10)
-    krn = krn.masked_fill(mask.logical_not(), float('-inf'))
+    krn = krn.masked_fill(mask.logical_not(), 0.0)
+    # krn = torch.clamp(krn, -10, 10)
+    # krn = krn.masked_fill(mask.logical_not(), float('-inf'))
     # krn = krn[:, :, 1:, :]
     # krn = F.softmax(krn, dim=-1)
     
