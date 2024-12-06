@@ -53,7 +53,7 @@ class GDAttention(nn.Module):
     krn = torch.clamp(krn, -10, 10)
 
     attn_scores = attn_scores.masked_fill(mask.logical_not(), float('-inf'))
-    attn_scores = F.softmax(attn_scores, dim=-1)
+    # attn_scores = F.softmax(attn_scores, dim=-1)
     attn_scores = self.attn_dropout(attn_scores)
     y = attn_scores @ V
     

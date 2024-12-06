@@ -131,7 +131,7 @@ class CausalGDM(nn.Module):
     krn = torch.clamp(krn, -10, 10)
     krn = krn.masked_fill(mask.logical_not(), float('-inf'))
     # krn = krn[:, :, 1:, :]
-    krn = F.softmax(krn, dim=-1)
+    # krn = F.softmax(krn, dim=-1)
     
     krn = self.attn_dropout(krn)
     
