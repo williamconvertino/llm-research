@@ -70,11 +70,13 @@ class CausalGDM(nn.Module):
     torch.nn.init.normal_(self.lm_head.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.wte.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.wpe.weight, mean=0.0, std=0.02)
-    torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
+    # torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
     # torch.nn.init.normal_(self.W_q, mean=0.0, std=0.02)
     # torch.nn.init.normal_(self.W_k, mean=0.0, std=0.02)
     # torch.nn.init.normal_(self.W_v, mean=0.0, std=0.02)
-    
+    for W_o in self.W_o_list:
+      torch.nn.init.normal_(W_o.weight, mean=0.0, std=0.02)
+
     torch.nn.init.normal_(self.W_q_diag, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.W_k_diag, mean=0.0, std=0.02)
     
