@@ -36,7 +36,8 @@ class CausalGDM(nn.Module):
     self.resid_dropout = nn.Dropout(config.dropout)
 
     # GD Step
-    self.W_o = nn.Linear(self.d_embed * self.n_head, self.d_embed, bias=False)
+    # self.W_o = nn.Linear(self.d_embed * self.n_head, self.d_embed, bias=False)
+    self.W_o_list = nn.ModuleList([nn.Linear(self.d_embed * self.n_head, self.d_embed, bias=False) for _ in range(self.n_layer)])
     W_N = torch.diag_embed(torch.tensor([1.0 / (i + 1) for i in range(config.context_size)])).unsqueeze(0).unsqueeze(0)
     self.register_buffer('W_N', W_N)
 
@@ -69,11 +70,13 @@ class CausalGDM(nn.Module):
     torch.nn.init.normal_(self.lm_head.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.wte.weight, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.wpe.weight, mean=0.0, std=0.02)
-    torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
+    # torch.nn.init.normal_(self.W_o.weight, mean=0.0, std=0.02/math.sqrt(2 * self.config.n_layer))
     # torch.nn.init.normal_(self.W_q, mean=0.0, std=0.02)
     # torch.nn.init.normal_(self.W_k, mean=0.0, std=0.02)
     # torch.nn.init.normal_(self.W_v, mean=0.0, std=0.02)
-    
+    for W_o in self.W_o_list:
+      torch.nn.init.normal_(W_o.weight, mean=0.0, std=0.02)
+
     torch.nn.init.normal_(self.W_q_diag, mean=0.0, std=0.02)
     torch.nn.init.normal_(self.W_k_diag, mean=0.0, std=0.02)
     
@@ -81,7 +84,7 @@ class CausalGDM(nn.Module):
       torch.nn.init.normal_(self.mlp[0].weight, mean=0.0, std=0.02)
       torch.nn.init.normal_(self.mlp[2].weight, mean=0.0, std=0.02)
   
-  def gd_step(self, f_k, e, krn):
+  def gd_step(self, f_k, e, krn, i):
     B, S, _ = e.size()
     R = torch.softmax(self.wte.weight @ f_k.transpose(1, 2), dim=-1)
     ex_wte = R.transpose(-1, -2) @ self.wte.weight
@@ -92,7 +95,7 @@ class CausalGDM(nn.Module):
     delta_f_k = krn @ V
     delta_f_k = self.W_N[:, :, :S, :S] @ delta_f_k
     delta_f_k = delta_f_k.transpose(1, 2).contiguous().view(B, S, self.d_embed * self.n_head)
-    delta_f_k = self.W_o(delta_f_k)
+    delta_f_k = self.W_o_list[i](delta_f_k)
     delta_f_k = self.resid_dropout(delta_f_k)
     
     return delta_f_k
@@ -142,8 +145,8 @@ class CausalGDM(nn.Module):
     f_k = torch.zeros_like(e, device=device)
 
     for i, _ in enumerate(range(self.config.n_layer)):
-      print(f"Layer {i}")
-      f_k = f_k + self.gd_step(f_k, e, krn)
+      # print(f"Layer {i}")
+      f_k = f_k + self.gd_step(f_k, e, krn, i)
       if self.config.use_ff:
         f_k = f_k + self.mlp(self.ln_mlp(f_k))
     
