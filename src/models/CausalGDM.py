@@ -17,7 +17,7 @@ class CausalGDM(nn.Module):
     self.d_ff = config.d_ff
 
     # Transformer Components
-    self.wte = nn.Embedding(config.vocab_size, config.d_embed)
+    self.wte = nn.Embedding(config.vocab_size + 1, config.d_embed)
     self.wpe = nn.Embedding(config.context_size + 1, config.d_embed) # Need a positional vector for the N+1th token
     self.drop_p = nn.Dropout(config.dropout)
     self.drop_e = nn.Dropout(config.dropout)
@@ -112,10 +112,13 @@ class CausalGDM(nn.Module):
 
     e = self.ln_e(e)
     p = self.ln_p(p)
+    
+    q = (torch.cat((e, self.wte.weight[[-1], :].repeat(B, 1, 1)), dim=1) + p)[:, 1:, :]
+    k = e + p[:, :-1, :]
 
     # Kernel
-    Q = p[:, 1:, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
-    K = p[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
+    Q = q.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
+    K = k.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
     
     W_q = torch.diag_embed(self.W_q_diag)
     W_k = torch.diag_embed(self.W_k_diag)
@@ -132,7 +135,7 @@ class CausalGDM(nn.Module):
     # krn = torch.clamp(krn, -10, 10)
     # krn = krn.masked_fill(mask.logical_not(), float('-inf'))
     # krn = krn[:, :, 1:, :]
-    # krn = F.softmax(krn, dim=-1)
+    krn = F.softmax(krn, dim=-1)
     
     krn = self.attn_dropout(krn)
     
