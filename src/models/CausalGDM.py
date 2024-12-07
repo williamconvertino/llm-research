@@ -114,12 +114,11 @@ class CausalGDM(nn.Module):
     e = self.ln_e(e)
     p = self.ln_p(p)
     
-    x_i = e + p[:, :-1, :]
-    x_j = torch.cat([e[:, 1:, :], torch.zeros(B, 1, self.d_embed, device=device)], dim=1) + p[:, 1:, :]
+    x = torch.cat((e, torch.zeros(B, 1, self.d_embed, device=device)), dim=1) + p
     
     # Kernel
-    Q = x_i.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
-    K = x_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
+    Q = x[:, 1:, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
+    K = x[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
     
     # W_q = torch.diag_embed(self.W_q_diag)
     # W_k = torch.diag_embed(self.W_k_diag)
