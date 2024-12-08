@@ -122,6 +122,10 @@ class CausalGDM(nn.Module):
     p_j = p_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
     e_j = e_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
     
+    x_i = x_i @ self.W_k
+    p_j = p_j @ self.W_q
+    e_j = e_j @ self.W_q
+    
     krn_p = p_j @ x_i.transpose(-2, -1)
     krn_e = e_j @ x_i.transpose(-2, -1)
     
