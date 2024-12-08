@@ -105,7 +105,7 @@ class CausalGDM(nn.Module):
     pos = torch.arange(0, S + 1, dtype=torch.long, device=device)
 
     e = self.wte(x) # token embeddings of shape (B, S, d_embed)
-    e_NP1 = self.wte(torch.full((B, 1), self.config.vocab_size - 1, dtype=torch.long, device=device)) # N+1 token embedding
+    e_learned = self.wte(torch.full((B, S), self.config.vocab_size - 1, dtype=torch.long, device=device)) # N+1 token embedding
     p = self.wpe(pos).repeat(B, 1, 1) # position embeddings of shape (B, S + 1, d_embed)
 
     e = self.drop_e(e)
@@ -115,7 +115,7 @@ class CausalGDM(nn.Module):
     p = self.ln_p(p)
     
     x_i = p[:, :-1, :] + e
-    p_j = p[:, 1:, :]
+    p_j = p[:, 1:, :] + e_learned
     # e_j = torch.cat((e, e_NP1), dim=1)[:, 1:, :]
   
     x_i = x_i.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
