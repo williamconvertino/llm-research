@@ -108,81 +108,35 @@ class CausalGDM(nn.Module):
     e_NP1 = self.wte(torch.full((B, 1), self.config.vocab_size - 1, dtype=torch.long, device=device)) # N+1 token embedding
     p = self.wpe(pos).repeat(B, 1, 1) # position embeddings of shape (B, S + 1, d_embed)
 
-    print("====================================")
-    print("E")
-    print(e[0, :, :])
-    print("E_NP1")
-    print(e_NP1)
-    print("P")
-    print(p[0, :, :])
+    e = self.drop_e(e)
+    p = self.drop_p(p)
 
-    # e = self.drop_e(e)
-    # p = self.drop_p(p)
-
-    # e = self.ln_e(e)
-    # p = self.ln_p(p)
+    e = self.ln_e(e)
+    p = self.ln_p(p)
     
     x_i = p[:, :-1, :] + e
     p_j = p[:, 1:, :]
-    e_j = torch.cat((e, e_NP1), dim=1)[:, 1:, :]
-    
-    print("====================================")
-    print("P_i")
-    print(p[:, :-1, :][0, :, :])
-    print("E_i")
-    print(e[0, :, :])
-    print("X_i")
-    print(x_i[0, :, :])
-    print("P_j")
-    print(p_j[0, :, :])
-    print("E_j")
-    print(e_j[0, :, :])
-    
+    # e_j = torch.cat((e, e_NP1), dim=1)[:, 1:, :]
+  
     x_i = x_i.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
     p_j = p_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
-    e_j = e_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
+    # e_j = e_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
     
     # x_i = x_i @ self.W_k
     # p_j = p_j @ self.W_q
     # e_j = e_j @ self.W_q
     
     krn_p = p_j @ x_i.transpose(-2, -1)
-    krn_e = e_j @ x_i.transpose(-2, -1)
-    
-    print("====================================")
-    print("krn_p")
-    print(krn_p[0, 0, :, :])
-    print("krn_e")
-    print(krn_e[0, 0, :, :])
+    # krn_e = e_j @ x_i.transpose(-2, -1)
     
     mask_p = torch.tril(torch.ones(S, S, device=device), diagonal=0).view(1, S, S).bool().logical_not()
-    mask_e = torch.tril(torch.ones(S, S, device=device), diagonal=-1).view(1, S, S).bool().logical_not()
-    
-    print("====================================")
-    print("mask_p")
-    print(mask_p[0, :, :])
-    print("mask_e")
-    print(mask_e[0, :, :])
+    # mask_e = torch.tril(torch.ones(S, S, device=device), diagonal=-1).view(1, S, S).bool().logical_not()
     
     krn_p = krn_p.masked_fill(mask_p, 0.0)
-    krn_e = krn_e.masked_fill(mask_e, 0.0)
+    # krn_e = krn_e.masked_fill(mask_e, 0.0)
     
-    print("====================================")
-    print("krn_p")
-    print(krn_p[0, 0, :, :])
-    print("krn_e")
-    print(krn_e[0, 0, :, :])
-    
-    # print("P")
-    # print(krn_p[0, :, :])
-    # print("E")
-    # print(krn_e[0, :, :])
-    
-    krn = krn_p + krn_e    
-    
-    print("====================================")
-    print("krn")
-    print(krn[0, 0, :, :])
+    # krn = krn_p + krn_e    
+    krn = krn_p
     
     krn = krn / math.sqrt(self.d_embed)
     krn = F.softmax(krn, dim=-1)
