@@ -122,15 +122,15 @@ class CausalGDM(nn.Module):
     p_j = p_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
     e_j = e_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
     
-    x_i = x_i @ self.W_k
-    p_j = p_j @ self.W_q
-    e_j = e_j @ self.W_q
+    # x_i = x_i @ self.W_k
+    # p_j = p_j @ self.W_q
+    # e_j = e_j @ self.W_q
     
     krn_p = p_j @ x_i.transpose(-2, -1)
     krn_e = e_j @ x_i.transpose(-2, -1)
     
-    mask_p = torch.tril(torch.ones(S, S, device=device), diagonal=0).view(1, S, S).bool().logical_not()
-    mask_e = torch.tril(torch.ones(S, S, device=device), diagonal=-1).view(1, S, S).bool().logical_not()
+    mask_p = torch.tril(torch.ones(S, S, device=device), diagonal=0).view(1, S, S).bool()
+    mask_e = torch.tril(torch.ones(S, S, device=device), diagonal=-1).view(1, S, S).bool()
     
     krn_p = krn_p.masked_fill(mask_p, 0.0)
     krn_e = krn_e.masked_fill(mask_e, 0.0)
