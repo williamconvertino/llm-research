@@ -17,7 +17,7 @@ class CausalGDM(nn.Module):
     self.d_ff = config.d_ff
 
     # Transformer Components
-    self.wte = nn.Embedding(config.vocab_size, config.d_embed)
+    self.wte = nn.Embedding(config.vocab_size + 1, config.d_embed) # Need a learned embedding for the N+1th token
     self.wpe = nn.Embedding(config.context_size + 1, config.d_embed) # Need a positional vector for the N+1th token
     self.drop_p = nn.Dropout(config.dropout)
     self.drop_e = nn.Dropout(config.dropout)
@@ -105,6 +105,7 @@ class CausalGDM(nn.Module):
     pos = torch.arange(0, S + 1, dtype=torch.long, device=device)
 
     e = self.wte(x) # token embeddings of shape (B, S, d_embed)
+    e_NP1 = self.wte(torch.full((B, 1), self.config.vocab_size, dtype=torch.long, device=device)) # N+1 token embedding
     p = self.wpe(pos).repeat(B, 1, 1) # position embeddings of shape (B, S + 1, d_embed)
 
     e = self.drop_e(e)
@@ -115,7 +116,7 @@ class CausalGDM(nn.Module):
     
     x_i = p[:, :-1, :] + e
     p_j = p[:, 1:, :]
-    e_j = torch.cat((e, torch.zeros(B, 1, self.d_embed, device=device)), dim=1)[:, 1:, :]
+    e_j = torch.cat((e, e_NP1), dim=1)[:, 1:, :]
     
     x_i = x_i.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
     p_j = p_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
