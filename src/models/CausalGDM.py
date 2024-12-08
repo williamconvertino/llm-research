@@ -135,6 +135,9 @@ class CausalGDM(nn.Module):
     krn_p = krn_p.masked_fill(mask_p, 0.0)
     krn_e = krn_e.masked_fill(mask_e, 0.0)
     
+    print(krn_p)
+    print(krn_e)
+    
     krn = krn_p + krn_e    
     
     krn = krn / math.sqrt(self.d_embed)
@@ -151,7 +154,6 @@ class CausalGDM(nn.Module):
     # K = K @ self.W_k
     
     # mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=0).view(1, S, S)
-    # mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
     # mask = mask.bool()
     
     # krn = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
