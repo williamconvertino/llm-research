@@ -116,11 +116,7 @@ class CausalGDM(nn.Module):
     
     x_i = p[:, :-1, :] + e
     p_j = p[:, 1:, :]
-    print("E")
-    print(e)
     e_j = torch.cat((e, e_NP1), dim=1)[:, 1:, :]
-    print("E_J")
-    print(e_j)
     
     x_i = x_i.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
     p_j = p_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
