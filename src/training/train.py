@@ -87,9 +87,6 @@ def train_model(model, train_dataset, val_dataset, max_epochs=None):
         time_remaining = get_time_remaining(start_time, step, len(train_dataset))
         print(f"\r\tEpoch {epoch} | Step {step}/{len(train_dataset)} | Train Loss: {train_loss:.4f} | Most Recent Val Loss: {val_loss:.4f} | Time Remaining: {time_remaining}", end='')
 
-      # REMOVE ME
-      if step >= 20000:
-        break
       
     print(f"\nEpoch {epoch} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
     
