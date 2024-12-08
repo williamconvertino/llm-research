@@ -128,11 +128,6 @@ class CausalGDM(nn.Module):
     mask_p = torch.tril(torch.ones(S, S, device=device), diagonal=0).view(1, S, S).bool().logical_not()
     mask_e = torch.tril(torch.ones(S, S, device=device), diagonal=-1).view(1, S, S).bool().logical_not()
     
-    print('P')
-    print(mask_p)
-    print('E')
-    print(mask_e)
-    
     krn_p = krn_p.masked_fill(mask_p, 0.0)
     krn_e = krn_e.masked_fill(mask_e, 0.0)
     
