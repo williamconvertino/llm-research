@@ -100,6 +100,8 @@ def run_experiment(config, seed=0):
   
   torch.manual_seed(seed)
   
+  config.update_name()
+  
   if config.model_type == "GPT":
     model = GPT(config)
   elif config.model_type == "GDM":
