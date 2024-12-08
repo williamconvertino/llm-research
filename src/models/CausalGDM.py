@@ -105,7 +105,6 @@ class CausalGDM(nn.Module):
     pos = torch.arange(0, S + 1, dtype=torch.long, device=device)
 
     e = self.wte(x) # token embeddings of shape (B, S, d_embed)
-    
     p = self.wpe(pos).repeat(B, 1, 1) # position embeddings of shape (B, S + 1, d_embed)
 
     e = self.drop_e(e)
@@ -114,28 +113,52 @@ class CausalGDM(nn.Module):
     e = self.ln_e(e)
     p = self.ln_p(p)
     
-    x = torch.cat((e, torch.zeros(B, 1, self.d_embed, device=device)), dim=1) + p
+    x_i = p[:, :-1, :] + e
+    p_j = p[:, 1:, :]
+    e_j = torch.cat((e, torch.zeros(B, 1, self.d_embed, device=device)), dim=1)[:, 1:, :]
+    
+    x_i = x_i.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
+    p_j = p_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
+    e_j = e_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2)
+    
+    krn_p = p_j @ x_i.transpose(-2, -1)
+    krn_e = e_j @ x_i.transpose(-2, -1)
+    
+    mask_p = torch.triu(torch.ones(S, S, device=device), diagonal=-1).view(1, S, S).bool()
+    mask_e = torch.triu(torch.ones(S, S, device=device), diagonal=0).view(1, S, S).bool()
+    
+    print('P')
+    print(mask_p)
+    print('E')
+    print(mask_e)
+    
+    krn_p = krn_p.masked_fill(mask_p.logical_not(), 0.0)
+    krn_e = krn_e.masked_fill(mask_e.logical_not(), 0.0)
+    
+    krn = krn_p + krn_e    
+    
+    krn = krn / math.sqrt(self.d_embed)
+    krn = F.softmax(krn, dim=-1)
     
     # Kernel
-    Q = x[:, 1:, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
-    K = x[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
+    # Q = x[:, 1:, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
+    # K = x[:, :-1, :].repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Only use first N positional embeddings for key
     
     # W_q = torch.diag_embed(self.W_q_diag)
     # W_k = torch.diag_embed(self.W_k_diag)
     
-    Q = Q @ self.W_q
-    K = K @ self.W_k
+    # Q = Q @ self.W_q
+    # K = K @ self.W_k
     
-    mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=0).view(1, S, S)
+    # mask = torch.tril(torch.ones(S, S, device=e.device), diagonal=0).view(1, S, S)
     # mask = torch.cat([mask, torch.ones(1, 1, S, device=e.device)], dim=1)
-    mask = mask.bool()
+    # mask = mask.bool()
     
-    krn = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
-    krn = krn.masked_fill(mask.logical_not(), 0.0)
+    # krn = Q @ K.transpose(-2, -1) / math.sqrt(self.d_embed)
+    # krn = krn.masked_fill(mask.logical_not(), 0.0)
     # krn = torch.clamp(krn, -10, 10)
     # krn = krn.masked_fill(mask.logical_not(), float('-inf'))
     # krn = krn[:, :, 1:, :]
-    krn = F.softmax(krn, dim=-1)
     
     krn = self.attn_dropout(krn)
     
