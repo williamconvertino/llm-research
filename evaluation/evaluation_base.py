@@ -84,6 +84,8 @@ CAUSAL_GDM_CONFIG = Config(
   
 def evaluate_model_with_config(config, max_epoch=None):
   
+  config.update_name()
+  
   if config.model_type == "GPT":
     model = GPT(config)
   elif config.model_type == "GDM":
