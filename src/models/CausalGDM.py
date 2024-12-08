@@ -135,8 +135,10 @@ class CausalGDM(nn.Module):
     krn_p = krn_p.masked_fill(mask_p, 0.0)
     krn_e = krn_e.masked_fill(mask_e, 0.0)
     
-    print(krn_p)
-    print(krn_e)
+    print("P")
+    print(krn_p[0, :, :])
+    print("E")
+    print(krn_e[0, :, :])
     
     krn = krn_p + krn_e    
     
