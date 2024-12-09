@@ -114,8 +114,8 @@ class CausalGDM(nn.Module):
     e = self.ln_e(e)
     p = self.ln_p(p)
     
-    x_i = x[:, :-1, :] + e
-    x_j = x[:, 1:, :]
+    x_i = p[:, :-1, :]
+    x_j = p[:, 1:, :]
     
     # Kernel
     Q = x_j.repeat(1, 1, self.n_head).view(B, S, self.n_head, self.d_embed).transpose(1, 2) # Use N+1 positional embeddings for query
