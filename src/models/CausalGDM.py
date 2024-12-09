@@ -114,7 +114,7 @@ class CausalGDM(nn.Module):
     e = self.ln_e(e)
     p = self.ln_p(p)
     
-    x_i = x[:, :-1, :]
+    x_i = x[:, :-1, :] + e
     x_j = x[:, 1:, :]
     
     # Kernel
